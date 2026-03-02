@@ -2,28 +2,61 @@
 
 import { useEffect, useState } from "react";
 import { Habit } from "@/types/habit";
-import { MOCK_HABITS, recalculateAllMetrics, loadHabitsFromLocal, saveHabitsToLocal } from "@/lib/mockData";
+import { MOCK_HABITS, recalculateAllMetrics } from "@/lib/mockData";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { HabitMatrix } from "@/components/habits/HabitMatrix";
 import { HabitVisuals } from "@/components/habits/HabitVisuals";
 import { HabitLeaderboard } from "@/components/habits/HabitLeaderboard";
-import { Button } from "@/components/ui/button";
-import { Loader2, Sparkles, Save } from "lucide-react";
+import { Loader2, Save } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { driver } from "driver.js";
+import "driver.js/dist/driver.css";
 
 export default function Dashboard() {
-  const [habits, setHabits] = useState<Habit[]>([]);
+  const [habits, setHabits] = useLocalStorage<Habit[]>("tracker-mock-habits", MOCK_HABITS);
   const [loading, setLoading] = useState(true);
   const [hasChanges, setHasChanges] = useState(false);
+  const [user, setUser] = useState<{name: string, email: string} | null>(null);
   const today = new Date();
   const [selectedMonth, setSelectedMonth] = useState<number>(today.getMonth());
   const [selectedYear, setSelectedYear] = useState<number>(today.getFullYear());
 
   useEffect(() => {
+    // ONE-TIME PURGE of old local storage mock data to force "today only" checkboxes
+    if (typeof window !== "undefined" && !localStorage.getItem("tracker-purged-v2")) {
+      localStorage.removeItem("tracker-mock-habits");
+      localStorage.setItem("tracker-purged-v2", "true");
+      window.location.reload(); // Reload immediately to pull fresh MOCK_HABITS with only today active
+    }
+
     // Simulate loading to mimic fetching data
     const timer = setTimeout(() => {
-      setHabits(loadHabitsFromLocal());
       setLoading(false);
     }, 500);
+
+    const storedUser = localStorage.getItem("tracker-user");
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (e) {}
+    }
+
+    const hasSeenTour = localStorage.getItem("tracker-tour-seen");
+    if (!hasSeenTour) {
+      setTimeout(() => {
+        const d = driver({
+          showProgress: true,
+          steps: [
+            { element: '.tour-matrix', popover: { title: 'Habit Matrix', description: 'Check off your daily habits here. Click on a habit name to edit or delete it.', side: "bottom" } },
+            { element: '.tour-visuals', popover: { title: 'Visual Analytics', description: 'Monitor your performance trends and tracking volume over the weeks.', side: "top" } },
+            { element: '.tour-leaderboard', popover: { title: 'Consistency Leaderboard', description: 'Track your total active days and mastery percentage up to the selected month.', side: "left" } },
+          ]
+        });
+        d.drive();
+        localStorage.setItem("tracker-tour-seen", "true");
+      }, 1200);
+    }
 
     const handleAddHabit = (e: Event) => {
       const customEvent = e as CustomEvent;
@@ -43,9 +76,7 @@ export default function Dashboard() {
         completionPercentage: 0,
       };
       setHabits(prev => {
-        const next = [newHabit, ...prev];
-        saveHabitsToLocal(next);
-        return next;
+        return [newHabit, ...prev];
       });
     };
 
@@ -53,7 +84,7 @@ export default function Dashboard() {
       const customEvent = e as CustomEvent;
       const { id, title, priority, duration, customStartDate, customEndDate, frequency } = customEvent.detail;
       setHabits(prev => {
-        const next = prev.map(h => h.id === id ? {
+        return prev.map(h => h.id === id ? {
           ...h,
           title,
           priority: priority || "Medium",
@@ -62,41 +93,41 @@ export default function Dashboard() {
           customEndDate,
           frequency: frequency || [0, 1, 2, 3, 4, 5, 6],
         } : h);
-        saveHabitsToLocal(next);
-        return next;
       });
     };
 
     const handleDeleteHabit = (e: Event) => {
       const customEvent = e as CustomEvent;
       setHabits(prev => {
-        const next = prev.filter(h => h.id !== customEvent.detail.id);
-        saveHabitsToLocal(next);
-        return next;
+        return prev.filter(h => h.id !== customEvent.detail.id);
       });
+    };
+
+    const handleSkipConversion = () => {
+      setHasChanges(false);
     };
 
     window.addEventListener('add-habit', handleAddHabit);
     window.addEventListener('edit-habit', handleEditHabit);
     window.addEventListener('delete-habit', handleDeleteHabit);
+    window.addEventListener('skip-conversion-modal', handleSkipConversion);
 
     return () => {
       clearTimeout(timer);
       window.removeEventListener('add-habit', handleAddHabit);
       window.removeEventListener('edit-habit', handleEditHabit);
       window.removeEventListener('delete-habit', handleDeleteHabit);
+      window.removeEventListener('skip-conversion-modal', handleSkipConversion);
     };
   }, []);
 
-  const handleGenerateBaseline = () => {
-    saveHabitsToLocal(MOCK_HABITS);
-    setHabits(MOCK_HABITS);
-    setHasChanges(false);
-  };
 
   const handleSave = () => {
-    saveHabitsToLocal(habits);
-    setHasChanges(false);
+    if (!user) {
+      window.dispatchEvent(new Event('open-conversion-modal'));
+    } else {
+      setHasChanges(false);
+    }
   };
 
   const handleToggleLog = async (habitId: string, date: Date, isCompleted: boolean) => {
@@ -121,7 +152,7 @@ export default function Dashboard() {
       }
       return h;
     }));
-    setHasChanges(true);
+    setHasChanges(true); // Show the save button
   };
 
   // Calculate day's percentage
@@ -205,33 +236,26 @@ export default function Dashboard() {
             )}
           </AnimatePresence>
 
-          {/* <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            <Button
-              onClick={handleGenerateBaseline}
-              className="rounded-2xl border border-border bg-card text-foreground hover:bg-muted shadow-sm transition-all h-[4.25rem] px-5"
-            >
-              <Sparkles className="w-4 h-4 mr-2 text-primary" />
-              Reset Data
-            </Button>
-          </motion.div> */}
         </div>
       </div>
 
-      <HabitMatrix 
-        habits={habits} 
-        onToggleLog={handleToggleLog} 
-        loadingHabitId={null} 
-        selectedMonth={selectedMonth}
-        setSelectedMonth={setSelectedMonth}
-        selectedYear={selectedYear}
-        setSelectedYear={setSelectedYear}
-      />
+      <div className="tour-matrix border border-transparent rounded-2xl">
+        <HabitMatrix 
+          habits={habits} 
+          onToggleLog={handleToggleLog} 
+          loadingHabitId={null} 
+          selectedMonth={selectedMonth}
+          setSelectedMonth={setSelectedMonth}
+          selectedYear={selectedYear}
+          setSelectedYear={setSelectedYear}
+        />
+      </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-2">
+        <div className="xl:col-span-2 tour-visuals border border-transparent rounded-2xl">
            <HabitVisuals habits={habits} />
         </div>
-        <div className="xl:col-span-1">
+        <div className="xl:col-span-1 tour-leaderboard border border-transparent rounded-2xl">
            <HabitLeaderboard habits={habits} selectedMonth={selectedMonth} selectedYear={selectedYear} />
         </div>
       </div>

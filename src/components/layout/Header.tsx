@@ -2,18 +2,35 @@
 
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Cloud } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Habit } from "@/types/habit";
 import { HabitModal } from "@/components/habits/HabitModal";
-import { motion } from "framer-motion";
-
+import { motion, AnimatePresence } from "framer-motion";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { ConversionModal } from "@/components/auth/ConversionModal";
+import { AuthModal } from "@/components/auth/AuthModal";
 
 export function Header() {
   const pathname = usePathname();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editHabit, setEditHabit] = useState<Habit | null>(null);
+
+  const [isConversionModalOpen, setIsConversionModalOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [user, setUser] = useState<{name: string, email: string} | null>(null);
+
+  useEffect(() => {
+    // Check if user is logged in
+    const stored = localStorage.getItem("tracker-user");
+    if (stored) {
+      try {
+        setUser(JSON.parse(stored));
+      } catch (e) {
+        // ignore
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const handleOpenEdit = (e: Event) => {
@@ -24,6 +41,12 @@ export function Header() {
 
     window.addEventListener('open-edit-modal', handleOpenEdit);
     return () => window.removeEventListener('open-edit-modal', handleOpenEdit);
+  }, []);
+
+  useEffect(() => {
+    const handleOpenConversion = () => setIsConversionModalOpen(true);
+    window.addEventListener('open-conversion-modal', handleOpenConversion);
+    return () => window.removeEventListener('open-conversion-modal', handleOpenConversion);
   }, []);
 
   const handleNewHabitClick = () => {
@@ -44,6 +67,15 @@ export function Header() {
             </h2>
           </div>
           <div className="flex items-center gap-3 sm:gap-4">
+            {!user && (
+              <button 
+                onClick={() => setIsConversionModalOpen(true)}
+                className="flex items-center gap-2 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 px-4 py-2 rounded-xl transition-all shadow-[0_0_15px_rgba(217,119,6,0.1)] font-semibold text-sm"
+              >
+                <Cloud className="w-4 h-4" />
+                <span className="hidden sm:inline">Sync to Cloud</span>
+              </button>
+            )}
             <ThemeToggle />
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Button 
@@ -57,6 +89,27 @@ export function Header() {
             </motion.div>
           </div>
         </div>
+        <ConversionModal 
+          isOpen={isConversionModalOpen} 
+          onClose={() => setIsConversionModalOpen(false)} 
+          onLoginClick={() => {
+            setIsConversionModalOpen(false);
+            setTimeout(() => setIsAuthModalOpen(true), 300);
+          }}
+          onSkip={() => {
+            setIsConversionModalOpen(false);
+            window.dispatchEvent(new Event('skip-conversion-modal'));
+          }}
+        />
+
+        <AuthModal 
+          isOpen={isAuthModalOpen} 
+          onClose={() => setIsAuthModalOpen(false)} 
+          onSuccess={(u) => {
+            setUser(u);
+            window.location.reload(); // Quick refresh to update the sidebar state
+          }} 
+        />
       </header>
 
       <HabitModal 

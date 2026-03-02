@@ -12,7 +12,7 @@ function generateMockLogs(habitId: string, prob: number, days: number = 30): Hab
       id: `log-${habitId}-${i}`,
       habitId,
       date: d.toISOString(),
-      isCompleted: Math.random() < prob,
+      isCompleted: i === 0,
     });
   }
   return logs;

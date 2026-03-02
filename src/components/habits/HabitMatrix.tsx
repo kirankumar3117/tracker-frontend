@@ -168,7 +168,7 @@ export function HabitMatrix({ habits, onToggleLog, loadingHabitId, selectedMonth
         <div className="absolute left-52 top-1/2 -translate-y-1/2 z-30 opacity-0 group-hover:opacity-100 transition-opacity">
           <button 
             onClick={() => scrollBy(-250)}
-            className="w-8 h-8 rounded-full bg-background/80 backdrop-blur-md border border-border flex items-center justify-center text-foreground shadow-md hover:bg-accent hover:text-accent-foreground"
+            className="w-8 h-8 rounded-full bg-background/80 backdrop-blur-md border border-border flex items-center justify-center text-foreground shadow-md hover:bg-accent hover:text-accent-foreground ml-10"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
