@@ -1,0 +1,98 @@
+export interface HabitLog {
+  id: string;
+  habitId: string;
+  date: string;
+  isCompleted: boolean;
+}
+
+export interface Habit {
+  id: string;
+  userId: string;
+  title: string;
+  createdAt: string;
+  logs: HabitLog[];
+  currentStreak: number;
+  bestStreak: number;
+  completionPercentage: number;
+}
+
+function generateMockLogs(habitId: string, prob: number, days: number = 14): HabitLog[] {
+  const logs: HabitLog[] = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    logs.push({
+      id: `log-${habitId}-${i}`,
+      habitId,
+      date: d.toISOString(),
+      isCompleted: Math.random() < prob,
+    });
+  }
+  return logs;
+}
+
+function computeMetrics(logs: HabitLog[]) {
+  let currentStreak = 0;
+  let bestStreak = 0;
+  let currentRun = 0;
+  let completedCount = 0;
+
+  // sort logs by date ascending
+  const sorted = [...logs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  
+  for (const log of sorted) {
+    if (log.isCompleted) {
+      completedCount++;
+      currentRun++;
+      if (currentRun > bestStreak) bestStreak = currentRun;
+    } else {
+      currentRun = 0;
+    }
+  }
+  
+  // current streak (start from end and go backward)
+  for (let i = sorted.length - 1; i >= 0; i--) {
+    if (sorted[i].isCompleted) {
+      currentStreak++;
+    } else {
+      break;
+    }
+  }
+
+  const completionPercentage = sorted.length ? Math.round((completedCount / sorted.length) * 100) : 0;
+
+  return { currentStreak, bestStreak, completionPercentage };
+}
+
+const mockBaseHabits = [
+  { id: "mock-1", title: "Running", prob: 0.6 },
+  { id: "mock-2", title: "Gym / Workout", prob: 0.8 },
+  { id: "mock-3", title: "DSA Problem Solving", prob: 0.9 },
+  { id: "mock-4", title: "Read technical documentation", prob: 0.5 },
+  { id: "mock-5", title: "Deep Work (2 hours)", prob: 0.7 },
+  { id: "mock-6", title: "Review 1 Open Source PR", prob: 0.4 },
+];
+
+export const MOCK_HABITS: Habit[] = mockBaseHabits.map((h) => {
+  const logs = generateMockLogs(h.id, h.prob, 14);
+  const metrics = computeMetrics(logs);
+  return {
+    id: h.id,
+    userId: "local-user",
+    title: h.title,
+    createdAt: new Date().toISOString(),
+    logs,
+    ...metrics,
+  };
+});
+
+export function recalculateAllMetrics(habit: Habit): Habit {
+  const metrics = computeMetrics(habit.logs);
+  return {
+    ...habit,
+    ...metrics
+  };
+}
