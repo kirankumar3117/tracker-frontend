@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutList, User, Settings, Palette, LogOut, LogIn } from "lucide-react";
@@ -44,15 +45,24 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="fixed inset-y-0 left-0 w-64 border-r border-border bg-background/80 backdrop-blur-xl flex flex-col pt-8 pb-4 px-4 z-50">
-      <div className="flex items-center gap-3 px-2 mb-8">
-        <div className="w-8 h-8 rounded-lg bg-secondary border border-border flex items-center justify-center">
-          <span className="text-foreground font-bold text-sm">D</span>
+    <aside className="fixed inset-y-0 left-0 w-64 border-r border-border bg-background/80 backdrop-blur-xl flex flex-col py-6 px-4 z-50">
+      
+      {/* LOGO AREA - FIXED WITH ABSOLUTE POSITIONING */}
+      <div className="relative flex items-center h-10 px-3 mb-10">
+        {/* The absolute positioning takes the tall logo out of the document flow so it won't stretch the sidebar */}
+        <div className="absolute left-1 top-1/2 -translate-y-1/2 w-16 h-28 pointer-events-none">
+          <Image src="/logo-dark.png" alt="D Tracker Logo" fill className="object-contain dark:hidden block ml-3" priority />
+          <Image src="/logo-light.png" alt="D Tracker Logo" fill className="object-contain hidden dark:block" priority />
         </div>
-        <h1 className="font-semibold tracking-tight text-foreground">Tracker</h1>
+        {/* We add margin-left to push the text past the floating logo */}
+        <span className="text-xl font-bold tracking-tight text-foreground ml-14">Tracker</span>
       </div>
 
-      <nav className="flex-1 space-y-1.5">
+      {/* NAVIGATION */}
+      <nav className="flex-1 space-y-2">
+        <div className="px-3 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          Overview
+        </div>
         {navItems.map((item) => {
           const isActive = pathname.startsWith(item.href);
           const Icon = item.icon;
@@ -60,13 +70,13 @@ export function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
-              className="relative outline-none"
+              className="relative outline-none block"
             >
               <motion.div
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors z-10 relative",
+                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors z-10 relative",
                   isActive
                     ? "text-foreground"
                     : "text-muted-foreground hover:text-foreground"
@@ -75,12 +85,12 @@ export function Sidebar() {
                 {isActive && (
                   <motion.div 
                     layoutId="active-sidebar-nav" 
-                    className="absolute inset-0 bg-secondary border border-border rounded-lg -z-10"
+                    className="absolute inset-0 bg-secondary border border-border rounded-xl -z-10"
                     transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                   />
                 )}
                 {!isActive && (
-                  <div className="absolute inset-0 bg-accent opacity-0 hover:opacity-100 rounded-lg -z-10 transition-opacity" />
+                  <div className="absolute inset-0 bg-accent opacity-0 hover:opacity-100 rounded-xl -z-10 transition-opacity duration-300" />
                 )}
                 <Icon className={cn("w-4 h-4", isActive ? "text-primary" : "")} />
                 {item.label}
@@ -91,46 +101,46 @@ export function Sidebar() {
       </nav>
 
       {/* USER PROFILE OR LOGIN */}
-      <div className="mt-auto border-t border-border pt-4 px-2 flex flex-col gap-2 min-h-[72px]">
+      <div className="mt-auto pt-4 flex flex-col gap-2 min-h-[72px]">
         {isMounted && (
           !user ? (
             <button 
               onClick={() => setIsAuthModalOpen(true)}
-              className="flex items-center justify-center gap-2 w-full h-10 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-all shadow-[0_0_15px_rgba(217,119,6,0.15)]"
+              className="group relative flex items-center justify-center gap-2 w-full h-11 rounded-xl bg-secondary border border-border text-foreground font-medium hover:bg-secondary/80 transition-all overflow-hidden"
             >
-              <LogIn className="w-4 h-4" />
-              <span>Login</span>
+              <LogIn className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+              <span>Log in to Sync</span>
             </button>
           ) : (
             <DropdownMenu>
-              <DropdownMenuTrigger className="flex items-center gap-3 text-sm font-medium text-foreground hover:bg-muted/50 w-full p-2 rounded-xl transition-colors outline-none cursor-pointer">
-                <div className="w-8 h-8 rounded-full bg-secondary border border-border flex items-center justify-center shrink-0 overflow-hidden">
+              <DropdownMenuTrigger className="flex items-center gap-3 text-sm font-medium text-foreground hover:bg-muted/50 border border-transparent hover:border-border w-full p-2.5 rounded-xl transition-all outline-none cursor-pointer">
+                <div className="w-8 h-8 rounded-full bg-secondary border border-border flex items-center justify-center shrink-0 overflow-hidden text-primary">
                   <span className="font-bold text-xs uppercase">{user.name.charAt(0)}</span>
                 </div>
                 <div className="flex flex-col flex-1 items-start min-w-0">
-                  <span className="truncate w-full text-left font-semibold tracking-tight">{user.name}</span>
+                  <span className="truncate w-full text-left font-medium text-foreground">{user.name}</span>
                   <span className="truncate w-full text-left text-[10px] text-muted-foreground">{user.email}</span>
                 </div>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" sideOffset={12} className="w-56 rounded-xl border-white/10 dark:bg-card shadow-2xl">
-                <DropdownMenuLabel className="font-semibold text-xs uppercase tracking-wider text-muted-foreground mb-1">My Account</DropdownMenuLabel>
-                <DropdownMenuSeparator className="bg-white/5" />
-                <DropdownMenuItem className="cursor-pointer gap-2 rounded-lg font-medium outline-none focus:bg-primary/10 py-2">
+              <DropdownMenuContent align="end" sideOffset={12} className="w-60 rounded-xl bg-card border-border shadow-2xl p-2">
+                <DropdownMenuLabel className="font-semibold text-[10px] uppercase tracking-wider text-muted-foreground mb-1 px-2">Account</DropdownMenuLabel>
+                <DropdownMenuSeparator className="bg-border my-1" />
+                <DropdownMenuItem className="cursor-pointer gap-3 rounded-lg font-medium text-foreground hover:bg-muted focus:bg-muted py-2.5 px-3 transition-colors outline-none">
                   <User className="w-4 h-4 text-muted-foreground" />
                   Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem className="cursor-pointer gap-2 rounded-lg font-medium outline-none focus:bg-primary/10 py-2">
+                <DropdownMenuItem className="cursor-pointer gap-3 rounded-lg font-medium text-foreground hover:bg-muted focus:bg-muted py-2.5 px-3 transition-colors outline-none">
                   <Settings className="w-4 h-4 text-muted-foreground" />
                   Preferences
                 </DropdownMenuItem>
-                <DropdownMenuItem className="cursor-pointer gap-2 rounded-lg font-medium outline-none focus:bg-primary/10 py-2">
+                <DropdownMenuItem className="cursor-pointer gap-3 rounded-lg font-medium text-foreground hover:bg-muted focus:bg-muted py-2.5 px-3 transition-colors outline-none">
                   <Palette className="w-4 h-4 text-muted-foreground" />
                   Theme
                 </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-white/5 my-1" />
+                <DropdownMenuSeparator className="bg-border my-1" />
                 <DropdownMenuItem 
                   onClick={handleLogout}
-                  className="cursor-pointer gap-2 rounded-lg font-bold text-red-500 hover:text-red-500 focus:text-red-500 hover:bg-red-500/10 focus:bg-red-500/10 py-2 outline-none"
+                  className="cursor-pointer gap-3 rounded-lg font-medium text-red-500 hover:text-red-600 hover:bg-red-500/10 focus:bg-red-500/10 focus:text-red-500 py-2.5 px-3 transition-colors outline-none"
                 >
                   <LogOut className="w-4 h-4" />
                   Log Out
