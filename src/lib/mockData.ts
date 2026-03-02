@@ -1,6 +1,6 @@
 import { Habit, HabitLog } from "@/types/habit";
 
-function generateMockLogs(habitId: string, prob: number, days: number = 30): HabitLog[] {
+function generateMockLogs(habitId: string, prob: number, days: number = 30, isLoggedIn: boolean = false): HabitLog[] {
   const logs: HabitLog[] = [];
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -12,7 +12,9 @@ function generateMockLogs(habitId: string, prob: number, days: number = 30): Hab
       id: `log-${habitId}-${i}`,
       habitId,
       date: d.toISOString(),
-      isCompleted: i === 0,
+      // If user is logged in, we wait for API to fill today's status, so we default to false.
+      // If user is not logged in, we default to the local mock checking today (i === 0)
+      isCompleted: isLoggedIn ? false : (i === 0),
     });
   }
   return logs;
@@ -60,23 +62,28 @@ const mockBaseHabits: Array<{ id: string, title: string, prob: number, priority:
   { id: "mock-6", title: "Review 1 Open Source PR", prob: 0.4, priority: "Medium", duration: "1-week" },
 ];
 
-export const MOCK_HABITS: Habit[] = mockBaseHabits.map((h) => {
-  const logs = generateMockLogs(h.id, h.prob, 30);
-  const metrics = computeMetrics(logs);
-  return {
-    id: h.id,
-    userId: "local-user",
-    title: h.title,
-    priority: h.priority,
-    duration: h.duration,
-    frequency: h.frequency || [0, 1, 2, 3, 4, 5, 6],
-    customStartDate: h.duration === 'custom' ? new Date().toISOString() : undefined,
-    customEndDate: h.duration === 'custom' ? new Date(Date.now() + 86400000 * 3).toISOString() : undefined,
-    createdAt: new Date().toISOString(),
-    logs,
-    ...metrics,
-  };
-});
+export const getMockHabits = (isLoggedIn: boolean = false): Habit[] => {
+  return mockBaseHabits.map((h) => {
+    const logs = generateMockLogs(h.id, h.prob, 30, isLoggedIn);
+    const metrics = computeMetrics(logs);
+    return {
+      id: h.id,
+      userId: "local-user",
+      title: h.title,
+      priority: h.priority,
+      duration: h.duration,
+      frequency: h.frequency || [0, 1, 2, 3, 4, 5, 6],
+      customStartDate: h.duration === 'custom' ? new Date().toISOString() : undefined,
+      customEndDate: h.duration === 'custom' ? new Date(Date.now() + 86400000 * 3).toISOString() : undefined,
+      createdAt: new Date().toISOString(),
+      logs,
+      ...metrics,
+    };
+  });
+};
+
+// Kept for backward compatibility if imported elsewhere, but it won't respect login state dynamically if imported directly as constant
+export const MOCK_HABITS: Habit[] = getMockHabits(false);
 
 export function recalculateAllMetrics(habit: Habit): Habit {
   const metrics = computeMetrics(habit.logs);
@@ -86,7 +93,7 @@ export function recalculateAllMetrics(habit: Habit): Habit {
   };
 }
 
-export function loadHabitsFromLocal(): Habit[] {
+export function loadHabitsFromLocal(isLoggedIn: boolean = false): Habit[] {
   if (typeof window !== "undefined") {
     const saved = localStorage.getItem("tracker-mock-habits");
     if (saved) {
@@ -99,7 +106,7 @@ export function loadHabitsFromLocal(): Habit[] {
       }));
     }
   }
-  return MOCK_HABITS;
+  return getMockHabits(isLoggedIn);
 }
 
 export function saveHabitsToLocal(habits: Habit[]) {
@@ -107,3 +114,4 @@ export function saveHabitsToLocal(habits: Habit[]) {
     localStorage.setItem("tracker-mock-habits", JSON.stringify(habits));
   }
 }
+

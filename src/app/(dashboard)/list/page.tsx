@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Habit } from "@/types/habit";
-import { MOCK_HABITS, recalculateAllMetrics } from "@/lib/mockData";
+import { MOCK_HABITS, recalculateAllMetrics, getMockHabits } from "@/lib/mockData";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { HabitMatrix } from "@/components/habits/HabitMatrix";
 import { HabitVisuals } from "@/components/habits/HabitVisuals";
@@ -14,33 +14,77 @@ import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
 
 export default function Dashboard() {
-  const [habits, setHabits] = useLocalStorage<Habit[]>("tracker-mock-habits", MOCK_HABITS);
+  const [user, setUser] = useState<{name: string, email: string} | null>(null);
+  
+  // Since we need to know if the user is logged in before setting Initial State
+  const [habits, setHabits] = useState<Habit[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasChanges, setHasChanges] = useState(false);
-  const [user, setUser] = useState<{name: string, email: string} | null>(null);
+  
   const today = new Date();
   const [selectedMonth, setSelectedMonth] = useState<number>(today.getMonth());
   const [selectedYear, setSelectedYear] = useState<number>(today.getFullYear());
 
   useEffect(() => {
-    // ONE-TIME PURGE of old local storage mock data to force "today only" checkboxes
+    let isLoggedIn = false;
+    let storedUserStr = null;
+    
+    // 1. Check Auth 
+    if (typeof window !== "undefined") {
+      storedUserStr = localStorage.getItem("tracker-user");
+      if (storedUserStr) {
+        try {
+           const parsedUser = JSON.parse(storedUserStr);
+           setUser(parsedUser);
+           isLoggedIn = true;
+        } catch (e) {}
+      }
+    }
+
+    // 2. ONE-TIME PURGE of old local storage mock data to force "today only" checkboxes
     if (typeof window !== "undefined" && !localStorage.getItem("tracker-purged-v2")) {
       localStorage.removeItem("tracker-mock-habits");
       localStorage.setItem("tracker-purged-v2", "true");
       window.location.reload(); // Reload immediately to pull fresh MOCK_HABITS with only today active
+      return;
+    }
+
+    // 3. Load or Generate Mock Habits depending on Login State
+    if (typeof window !== "undefined") {
+       const saved = localStorage.getItem("tracker-mock-habits");
+       
+       // Force regeneration if the habits in storage don't match the expected current login context
+       // To do this simply, if they are logging in, we just flush the old anonymous habits and generate fresh
+       const lastKnownState = localStorage.getItem("tracker-last-login-state");
+       const currentStateStr = isLoggedIn ? "logged-in" : "logged-out";
+       
+       if (saved && lastKnownState === currentStateStr) {
+           try {
+             const parsed = JSON.parse(saved);
+             const validatedHabits = parsed.map((h: any) => ({
+                ...h,
+                priority: h.priority || "Medium",
+                duration: h.duration || "all-time",
+                frequency: h.frequency || [0, 1, 2, 3, 4, 5, 6]
+             }));
+             setHabits(validatedHabits);
+           } catch(e) {
+             const fresh = getMockHabits(isLoggedIn);
+             setHabits(fresh);
+             localStorage.setItem("tracker-mock-habits", JSON.stringify(fresh));
+           }
+       } else {
+           const fresh = getMockHabits(isLoggedIn);
+           setHabits(fresh);
+           localStorage.setItem("tracker-mock-habits", JSON.stringify(fresh));
+           localStorage.setItem("tracker-last-login-state", currentStateStr);
+       }
     }
 
     // Simulate loading to mimic fetching data
     const timer = setTimeout(() => {
       setLoading(false);
     }, 500);
-
-    const storedUser = localStorage.getItem("tracker-user");
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {}
-    }
 
     const hasSeenTour = localStorage.getItem("tracker-tour-seen");
     if (!hasSeenTour) {

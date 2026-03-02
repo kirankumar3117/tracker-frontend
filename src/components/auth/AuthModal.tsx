@@ -22,7 +22,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -44,25 +44,76 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
 
     setLoading(true);
 
-    // Simulate network delay
-    setTimeout(() => {
-      setLoading(false);
-      const user = {
-        name: isLogin ? email.split('@')[0] : name,
-        email: email,
-      };
-      
-      // Save to local storage mock
-      localStorage.setItem("tracker-user", JSON.stringify(user));
-      onSuccess(user);
-      onClose();
-      
-      // Reset form
-      setName("");
-      setEmail("");
-      setPassword("");
-      setConfirmPassword("");
-    }, 1000);
+    try {
+      if (!isLogin) {
+        // Registration Flow
+        const response = await fetch("http://localhost:8000/api/v1/auth/register", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name,
+            email,
+            password,
+            confirmPassword,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || data.detail || "Registration failed");
+        }
+
+        // Successfully registered
+        const user = {
+          name: data.data.user.name,
+          email: data.data.user.email,
+        };
+        
+        // Save to local storage mock or update token logic as needed
+        localStorage.setItem("tracker-user", JSON.stringify(user));
+        if (data.data.token) {
+           localStorage.setItem("tracker-token", data.data.token);
+        }
+        
+        onSuccess(user);
+        onClose();
+        
+        // Reset form
+        setName("");
+        setEmail("");
+        setPassword("");
+        setConfirmPassword("");
+      } else {
+        // Login Flow (keeping existing mock or structure for now until similar API is provided)
+        // Simulate network delay for login
+        setTimeout(() => {
+          const user = {
+            name: email.split('@')[0],
+            email: email,
+          };
+          
+          localStorage.setItem("tracker-user", JSON.stringify(user));
+          onSuccess(user);
+          onClose();
+          
+          setName("");
+          setEmail("");
+          setPassword("");
+          setConfirmPassword("");
+          setLoading(false);
+        }, 1000);
+        return; // Early return because setTimeout handles setLoading(false)
+      }
+    } catch (err: any) {
+      setError(err.message || "An error occurred during authentication.");
+    } finally {
+      if (!isLogin) {
+        setLoading(false);
+      }
+    }
   };
 
   const handleGoogleAuth = () => {
