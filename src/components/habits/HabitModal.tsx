@@ -15,23 +15,14 @@ export function HabitModal({ isOpen, onClose, onRefresh }: { isOpen: boolean; on
     if (!title.trim()) return;
 
     setLoading(true);
-    try {
-      const res = await fetch("/api/habits", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title }),
-      });
-
-      if (res.ok) {
-        setTitle("");
-        onRefresh();
-        onClose();
-      }
-    } catch (error) {
-      console.error(error);
-    } finally {
+    // Simulate network delay for UI fluidity
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('add-habit', { detail: { title } }));
+      setTitle("");
+      onRefresh();
+      onClose();
       setLoading(false);
-    }
+    }, 400);
   };
 
   return (

@@ -4,23 +4,17 @@ import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useState } from "react";
-import { useSession, signIn } from "next-auth/react";
 import { HabitModal } from "@/components/habits/HabitModal";
 import { motion } from "framer-motion";
 
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 export function Header() {
-  const { status } = useSession();
   const pathname = usePathname();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleNewHabitClick = () => {
-    if (status === "unauthenticated") {
-      signIn();
-    } else {
-      setIsModalOpen(true);
-    }
+    setIsModalOpen(true);
   };
 
   const formatTitle = (path: string) => {

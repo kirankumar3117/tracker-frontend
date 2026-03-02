@@ -1,119 +1,85 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSession, signIn } from "next-auth/react";
 import { Habit } from "@/types/habit";
+import { MOCK_HABITS, recalculateAllMetrics, loadHabitsFromLocal, saveHabitsToLocal } from "@/lib/mockData";
 import { HabitMatrix } from "@/components/habits/HabitMatrix";
 import { HabitVisuals } from "@/components/habits/HabitVisuals";
 import { HabitLeaderboard } from "@/components/habits/HabitLeaderboard";
 import { Button } from "@/components/ui/button";
-import { Loader2, Target, Sparkles, AlertCircle, LogIn } from "lucide-react";
+import { Loader2, Sparkles, Save } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-const DEFAULT_HABITS: Habit[] = [
-  { id: "local-1", userId: "local", title: "Running", createdAt: new Date().toISOString(), logs: [], currentStreak: 0, bestStreak: 0, completionPercentage: 0 },
-  { id: "local-2", userId: "local", title: "Gym / Workout", createdAt: new Date().toISOString(), logs: [], currentStreak: 0, bestStreak: 0, completionPercentage: 0 },
-  { id: "local-3", userId: "local", title: "DSA Problem Solving", createdAt: new Date().toISOString(), logs: [], currentStreak: 0, bestStreak: 0, completionPercentage: 0 },
-  { id: "local-4", userId: "local", title: "Read technical documentation", createdAt: new Date().toISOString(), logs: [], currentStreak: 0, bestStreak: 0, completionPercentage: 0 },
-  { id: "local-5", userId: "local", title: "Deep Work (2 hours)", createdAt: new Date().toISOString(), logs: [], currentStreak: 0, bestStreak: 0, completionPercentage: 0 },
-  { id: "local-6", userId: "local", title: "Review 1 Open Source PR", createdAt: new Date().toISOString(), logs: [], currentStreak: 0, bestStreak: 0, completionPercentage: 0 },
-];
-
 export default function Dashboard() {
-  const { data: session, status } = useSession();
   const [habits, setHabits] = useState<Habit[]>([]);
   const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
-  const [logLoading, setLogLoading] = useState<string | null>(null);
-
-  const fetchHabits = async () => {
-    if (status === "unauthenticated") {
-      setHabits(DEFAULT_HABITS);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const res = await fetch("/api/habits");
-      if (res.ok) {
-        const data = await res.json();
-        setHabits(data);
-      }
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
-    if (status !== "loading") {
-      fetchHabits();
-    }
-    
-    // Listen for header modal refresh
-    const handleRefresh = () => {
-      if (status === "authenticated") fetchHabits();
+    // Simulate loading to mimic fetching data
+    const timer = setTimeout(() => {
+      setHabits(loadHabitsFromLocal());
+      setLoading(false);
+    }, 500);
+
+    const handleAddHabit = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const newHabit: Habit = {
+        id: `mock-${Date.now()}`,
+        userId: "local-user",
+        title: customEvent.detail.title,
+        createdAt: new Date().toISOString(),
+        logs: [],
+        currentStreak: 0,
+        bestStreak: 0,
+        completionPercentage: 0,
+      };
+      setHabits(prev => [newHabit, ...prev]);
+      setHasChanges(true); // Flag for saving
     };
-    window.addEventListener('refresh-habits', handleRefresh);
-    return () => window.removeEventListener('refresh-habits', handleRefresh);
-  }, [status]);
 
-  const handleGenerateBaseline = async () => {
-    if (status === "unauthenticated") {
-      signIn();
-      return;
-    }
+    window.addEventListener('add-habit', handleAddHabit);
 
-    setGenerating(true);
-    try {
-      await fetch("/api/habits/baseline", { method: "POST" });
-      await fetchHabits();
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setGenerating(false);
-    }
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('add-habit', handleAddHabit);
+    };
+  }, []);
+
+  const handleGenerateBaseline = () => {
+    saveHabitsToLocal(MOCK_HABITS);
+    setHabits(MOCK_HABITS);
+    setHasChanges(false);
+  };
+
+  const handleSave = () => {
+    saveHabitsToLocal(habits);
+    setHasChanges(false);
   };
 
   const handleToggleLog = async (habitId: string, date: Date, isCompleted: boolean) => {
-    const loadingKey = `${habitId}-${date.getTime()}`;
-    setLogLoading(loadingKey);
-    
-    // Optimistic UI Update
     setHabits(prev => prev.map(h => {
       if (h.id === habitId) {
-        const existingLogIndex = h.logs.findIndex(l => new Date(l.date).getTime() === date.getTime());
+        const existingLogIndex = h.logs.findIndex(l => {
+          const lDate = new Date(l.date);
+          lDate.setHours(0,0,0,0);
+          const dDate = new Date(date);
+          dDate.setHours(0,0,0,0);
+          return lDate.getTime() === dDate.getTime();
+        });
+        
         const newLogs = [...h.logs];
         if (existingLogIndex >= 0) {
           newLogs[existingLogIndex] = { ...newLogs[existingLogIndex], isCompleted };
         } else {
-          newLogs.push({ id: 'temp', habitId, date: date.toISOString(), isCompleted });
+          newLogs.push({ id: `log-${Date.now()}`, habitId, date: date.toISOString(), isCompleted });
         }
-        return { ...h, logs: newLogs };
+        
+        return recalculateAllMetrics({ ...h, logs: newLogs });
       }
       return h;
     }));
-
-    if (status === "unauthenticated") {
-      setLogLoading(null);
-      return; // Skip posting to DB if unauthenticated
-    }
-
-    try {
-      await fetch(`/api/habits/${habitId}/logs`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date: date.toISOString(), isCompleted }),
-      });
-      // Re-fetch to compute new streaks backend-side securely
-      await fetchHabits();
-    } catch (e) {
-      console.error(e);
-      await fetchHabits(); // Revert
-    } finally {
-      setLogLoading(null);
-    }
+    setHasChanges(true);
   };
 
   // Calculate day's percentage
@@ -121,12 +87,16 @@ export default function Dashboard() {
   today.setHours(0,0,0,0);
   let todayCompleted = 0;
   habits.forEach(h => {
-    const log = h.logs.find(l => new Date(l.date).getTime() === today.getTime());
+    const log = h.logs.find(l => {
+      const lDate = new Date(l.date);
+      lDate.setHours(0,0,0,0);
+      return lDate.getTime() === today.getTime();
+    });
     if (log?.isCompleted) todayCompleted++;
   });
   const todayPercentage = habits.length > 0 ? Math.round((todayCompleted / habits.length) * 100) : 0;
 
-  if (loading || status === "loading") {
+  if (loading) {
     return (
       <div className="h-full flex items-center justify-center min-h-[50vh]">
         <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
@@ -147,9 +117,7 @@ export default function Dashboard() {
           </h1>
           <p className="text-muted-foreground mt-2 font-medium flex items-center gap-2">
             Monitor consistencies and advanced spreadsheet analytics.
-            {status === "unauthenticated" && (
-              <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full border border-border">Local Mode</span>
-            )}
+            <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full border border-border">Mock Data Mode</span>
           </p>
         </div>
         
@@ -176,24 +144,39 @@ export default function Dashboard() {
              </div>
           </div>
 
-          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+          <AnimatePresence>
+            {hasChanges && (
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.8, opacity: 0 }}
+                whileHover={{ scale: 1.02 }} 
+                whileTap={{ scale: 0.98 }}
+              >
+                <Button
+                  onClick={handleSave}
+                  className="rounded-2xl border border-transparent bg-green-600 text-white hover:bg-green-700 shadow-[0_0_15px_rgba(22,163,74,0.3)] transition-all h-[4.25rem] px-5 font-semibold"
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Changes
+                </Button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
             <Button
               onClick={handleGenerateBaseline}
-              disabled={generating}
               className="rounded-2xl border border-border bg-card text-foreground hover:bg-muted shadow-sm transition-all h-[4.25rem] px-5"
             >
-              {generating ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin text-primary" />
-              ) : (
-                <Sparkles className="w-4 h-4 mr-2 text-primary" />
-              )}
-              Baseline
+              <Sparkles className="w-4 h-4 mr-2 text-primary" />
+              Reset Data
             </Button>
-          </motion.div>
+          </motion.div> */}
         </div>
       </div>
 
-      <HabitMatrix habits={habits} onToggleLog={handleToggleLog} loadingHabitId={logLoading} />
+      <HabitMatrix habits={habits} onToggleLog={handleToggleLog} loadingHabitId={null} />
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div className="xl:col-span-2">

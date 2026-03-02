@@ -1,22 +1,6 @@
-export interface HabitLog {
-  id: string;
-  habitId: string;
-  date: string;
-  isCompleted: boolean;
-}
+import { Habit, HabitLog } from "@/types/habit";
 
-export interface Habit {
-  id: string;
-  userId: string;
-  title: string;
-  createdAt: string;
-  logs: HabitLog[];
-  currentStreak: number;
-  bestStreak: number;
-  completionPercentage: number;
-}
-
-function generateMockLogs(habitId: string, prob: number, days: number = 14): HabitLog[] {
+function generateMockLogs(habitId: string, prob: number, days: number = 30): HabitLog[] {
   const logs: HabitLog[] = [];
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -77,7 +61,7 @@ const mockBaseHabits = [
 ];
 
 export const MOCK_HABITS: Habit[] = mockBaseHabits.map((h) => {
-  const logs = generateMockLogs(h.id, h.prob, 14);
+  const logs = generateMockLogs(h.id, h.prob, 30);
   const metrics = computeMetrics(logs);
   return {
     id: h.id,
@@ -95,4 +79,18 @@ export function recalculateAllMetrics(habit: Habit): Habit {
     ...habit,
     ...metrics
   };
+}
+
+export function loadHabitsFromLocal(): Habit[] {
+  if (typeof window !== "undefined") {
+    const saved = localStorage.getItem("tracker-mock-habits");
+    if (saved) return JSON.parse(saved);
+  }
+  return MOCK_HABITS;
+}
+
+export function saveHabitsToLocal(habits: Habit[]) {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("tracker-mock-habits", JSON.stringify(habits));
+  }
 }

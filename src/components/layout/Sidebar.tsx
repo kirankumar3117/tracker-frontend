@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutList, User, LogOut, LogIn } from "lucide-react";
+import { LayoutList, User } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { signOut, signIn, useSession } from "next-auth/react";
 import { motion } from "framer-motion";
 
 const navItems = [
@@ -13,7 +12,6 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { data: session } = useSession();
 
   return (
     <aside className="fixed inset-y-0 left-0 w-64 border-r border-border bg-background/80 backdrop-blur-xl flex flex-col pt-8 pb-4 px-4 z-50">
@@ -62,37 +60,15 @@ export function Sidebar() {
         })}
       </nav>
 
-      {session?.user ? (
-        <div className="mt-auto border-t border-border pt-4 px-2 flex flex-col gap-2">
-          <div className="flex items-center gap-3 text-sm font-medium text-muted-foreground mb-2 px-1">
-            <div className="w-8 h-8 rounded-full bg-secondary border border-border flex items-center justify-center">
-              <User className="w-4 h-4 text-muted-foreground" />
-            </div>
-            <span className="truncate">{session.user.name || session.user.email}</span>
+      {/* MOCK USER PROFILE */}
+      <div className="mt-auto border-t border-border pt-4 px-2 flex flex-col gap-2">
+        <div className="flex items-center gap-3 text-sm font-medium text-muted-foreground mb-2 px-1">
+          <div className="w-8 h-8 rounded-full bg-secondary border border-border flex items-center justify-center">
+            <User className="w-4 h-4 text-muted-foreground" />
           </div>
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => signOut()}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
-          >
-            <LogOut className="w-4 h-4" />
-            Sign Out
-          </motion.button>
+          <span className="truncate">frontend-engineer</span>
         </div>
-      ) : (
-        <div className="mt-auto border-t border-border pt-4 px-2 flex flex-col gap-2">
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => signIn()}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-primary hover:bg-primary/10 transition-colors"
-          >
-            <LogIn className="w-4 h-4" />
-            Sign In to Save
-          </motion.button>
-        </div>
-      )}
+      </div>
     </aside>
   );
 }
