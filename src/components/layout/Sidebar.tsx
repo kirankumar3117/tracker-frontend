@@ -2,9 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutList, User } from "lucide-react";
+import { LayoutList, User, Settings, Palette, LogOut, LogIn } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { useState } from "react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const navItems = [
   { href: "/list", label: "Dashboard", icon: LayoutList },
@@ -12,6 +21,7 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [isLoggedIn, setIsLoggedIn] = useState(true);
 
   return (
     <aside className="fixed inset-y-0 left-0 w-64 border-r border-border bg-background/80 backdrop-blur-xl flex flex-col pt-8 pb-4 px-4 z-50">
@@ -60,14 +70,50 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* MOCK USER PROFILE */}
+      {/* USER PROFILE OR LOGIN */}
       <div className="mt-auto border-t border-border pt-4 px-2 flex flex-col gap-2">
-        <div className="flex items-center gap-3 text-sm font-medium text-muted-foreground mb-2 px-1">
-          <div className="w-8 h-8 rounded-full bg-secondary border border-border flex items-center justify-center">
-            <User className="w-4 h-4 text-muted-foreground" />
-          </div>
-          <span className="truncate">frontend-engineer</span>
-        </div>
+        {!isLoggedIn ? (
+          <button 
+            onClick={() => setIsLoggedIn(true)}
+            className="flex items-center justify-center gap-2 w-full h-10 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-all shadow-[0_0_15px_rgba(217,119,6,0.15)]"
+          >
+            <LogIn className="w-4 h-4" />
+            <span>Login</span>
+          </button>
+        ) : (
+          <DropdownMenu>
+            <DropdownMenuTrigger className="flex items-center gap-3 text-sm font-medium text-foreground hover:bg-muted/50 w-full p-2 rounded-xl transition-colors outline-none cursor-pointer">
+              <div className="w-8 h-8 rounded-full bg-secondary border border-border flex items-center justify-center shrink-0">
+                <User className="w-4 h-4 text-muted-foreground" />
+              </div>
+              <span className="truncate text-left flex-1 font-semibold tracking-tight">frontend-engineer</span>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" sideOffset={12} className="w-56 rounded-xl border-white/10 dark:bg-card shadow-2xl">
+              <DropdownMenuLabel className="font-semibold text-xs uppercase tracking-wider text-muted-foreground mb-1">My Account</DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-white/5" />
+              <DropdownMenuItem className="cursor-pointer gap-2 rounded-lg font-medium outline-none focus:bg-primary/10 py-2">
+                <User className="w-4 h-4 text-muted-foreground" />
+                Profile
+              </DropdownMenuItem>
+              <DropdownMenuItem className="cursor-pointer gap-2 rounded-lg font-medium outline-none focus:bg-primary/10 py-2">
+                <Settings className="w-4 h-4 text-muted-foreground" />
+                Preferences
+              </DropdownMenuItem>
+              <DropdownMenuItem className="cursor-pointer gap-2 rounded-lg font-medium outline-none focus:bg-primary/10 py-2">
+                <Palette className="w-4 h-4 text-muted-foreground" />
+                Theme
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-white/5 my-1" />
+              <DropdownMenuItem 
+                onClick={() => setIsLoggedIn(false)}
+                className="cursor-pointer gap-2 rounded-lg font-bold text-red-500 hover:text-red-500 focus:text-red-500 hover:bg-red-500/10 focus:bg-red-500/10 py-2 outline-none"
+              >
+                <LogOut className="w-4 h-4" />
+                Log Out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
     </aside>
   );

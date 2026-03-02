@@ -51,13 +51,13 @@ function computeMetrics(logs: HabitLog[]) {
   return { currentStreak, bestStreak, completionPercentage };
 }
 
-const mockBaseHabits = [
-  { id: "mock-1", title: "Running", prob: 0.6 },
-  { id: "mock-2", title: "Gym / Workout", prob: 0.8 },
-  { id: "mock-3", title: "DSA Problem Solving", prob: 0.9 },
-  { id: "mock-4", title: "Read technical documentation", prob: 0.5 },
-  { id: "mock-5", title: "Deep Work (2 hours)", prob: 0.7 },
-  { id: "mock-6", title: "Review 1 Open Source PR", prob: 0.4 },
+const mockBaseHabits: Array<{ id: string, title: string, prob: number, priority: "High" | "Medium" | "Low", duration: "1-week" | "all-time" | "custom", frequency?: number[] }> = [
+  { id: "mock-1", title: "Running", prob: 0.6, priority: "High", duration: "all-time" },
+  { id: "mock-2", title: "Gym / Workout", prob: 0.8, priority: "Medium", duration: "all-time" },
+  { id: "mock-3", title: "DSA Problem Solving", prob: 0.9, priority: "High", duration: "all-time" },
+  { id: "mock-4", title: "Read technical documentation", prob: 0.5, priority: "Low", duration: "1-week" },
+  { id: "mock-5", title: "Deep Work (2 hours)", prob: 0.7, priority: "High", duration: "all-time" },
+  { id: "mock-6", title: "Review 1 Open Source PR", prob: 0.4, priority: "Medium", duration: "1-week" },
 ];
 
 export const MOCK_HABITS: Habit[] = mockBaseHabits.map((h) => {
@@ -67,6 +67,11 @@ export const MOCK_HABITS: Habit[] = mockBaseHabits.map((h) => {
     id: h.id,
     userId: "local-user",
     title: h.title,
+    priority: h.priority,
+    duration: h.duration,
+    frequency: h.frequency || [0, 1, 2, 3, 4, 5, 6],
+    customStartDate: h.duration === 'custom' ? new Date().toISOString() : undefined,
+    customEndDate: h.duration === 'custom' ? new Date(Date.now() + 86400000 * 3).toISOString() : undefined,
     createdAt: new Date().toISOString(),
     logs,
     ...metrics,
@@ -84,7 +89,15 @@ export function recalculateAllMetrics(habit: Habit): Habit {
 export function loadHabitsFromLocal(): Habit[] {
   if (typeof window !== "undefined") {
     const saved = localStorage.getItem("tracker-mock-habits");
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return parsed.map((h: any) => ({
+        ...h,
+        priority: h.priority || "Medium",
+        duration: h.duration || "all-time",
+        frequency: h.frequency || [0, 1, 2, 3, 4, 5, 6]
+      }));
+    }
   }
   return MOCK_HABITS;
 }

@@ -16,7 +16,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${inter.className} min-h-screen antialiased selection:bg-[#30363d] selection:text-white`}>
         <Providers>{children}</Providers>
       </body>
