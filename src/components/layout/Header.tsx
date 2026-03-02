@@ -3,7 +3,8 @@
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Habit } from "@/types/habit";
 import { HabitModal } from "@/components/habits/HabitModal";
 import { motion } from "framer-motion";
 
@@ -12,8 +13,21 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 export function Header() {
   const pathname = usePathname();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editHabit, setEditHabit] = useState<Habit | null>(null);
+
+  useEffect(() => {
+    const handleOpenEdit = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      setEditHabit(customEvent.detail);
+      setIsModalOpen(true);
+    };
+
+    window.addEventListener('open-edit-modal', handleOpenEdit);
+    return () => window.removeEventListener('open-edit-modal', handleOpenEdit);
+  }, []);
 
   const handleNewHabitClick = () => {
+    setEditHabit(null);
     setIsModalOpen(true);
   };
 
@@ -49,6 +63,7 @@ export function Header() {
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
         onRefresh={() => window.dispatchEvent(new Event('refresh-habits'))}
+        editHabit={editHabit}
       />
     </>
   );

@@ -14,6 +14,9 @@ export default function Dashboard() {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasChanges, setHasChanges] = useState(false);
+  const today = new Date();
+  const [selectedMonth, setSelectedMonth] = useState<number>(today.getMonth());
+  const [selectedYear, setSelectedYear] = useState<number>(today.getFullYear());
 
   useEffect(() => {
     // Simulate loading to mimic fetching data
@@ -39,15 +42,49 @@ export default function Dashboard() {
         bestStreak: 0,
         completionPercentage: 0,
       };
-      setHabits(prev => [newHabit, ...prev]);
-      setHasChanges(true); // Flag for saving
+      setHabits(prev => {
+        const next = [newHabit, ...prev];
+        saveHabitsToLocal(next);
+        return next;
+      });
+    };
+
+    const handleEditHabit = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const { id, title, priority, duration, customStartDate, customEndDate, frequency } = customEvent.detail;
+      setHabits(prev => {
+        const next = prev.map(h => h.id === id ? {
+          ...h,
+          title,
+          priority: priority || "Medium",
+          duration: duration || "all-time",
+          customStartDate,
+          customEndDate,
+          frequency: frequency || [0, 1, 2, 3, 4, 5, 6],
+        } : h);
+        saveHabitsToLocal(next);
+        return next;
+      });
+    };
+
+    const handleDeleteHabit = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      setHabits(prev => {
+        const next = prev.filter(h => h.id !== customEvent.detail.id);
+        saveHabitsToLocal(next);
+        return next;
+      });
     };
 
     window.addEventListener('add-habit', handleAddHabit);
+    window.addEventListener('edit-habit', handleEditHabit);
+    window.addEventListener('delete-habit', handleDeleteHabit);
 
     return () => {
       clearTimeout(timer);
       window.removeEventListener('add-habit', handleAddHabit);
+      window.removeEventListener('edit-habit', handleEditHabit);
+      window.removeEventListener('delete-habit', handleDeleteHabit);
     };
   }, []);
 
@@ -88,7 +125,6 @@ export default function Dashboard() {
   };
 
   // Calculate day's percentage
-  const today = new Date();
   today.setHours(0,0,0,0);
   let todayCompleted = 0;
   habits.forEach(h => {
@@ -181,14 +217,22 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <HabitMatrix habits={habits} onToggleLog={handleToggleLog} loadingHabitId={null} />
+      <HabitMatrix 
+        habits={habits} 
+        onToggleLog={handleToggleLog} 
+        loadingHabitId={null} 
+        selectedMonth={selectedMonth}
+        setSelectedMonth={setSelectedMonth}
+        selectedYear={selectedYear}
+        setSelectedYear={setSelectedYear}
+      />
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div className="xl:col-span-2">
            <HabitVisuals habits={habits} />
         </div>
         <div className="xl:col-span-1">
-           <HabitLeaderboard habits={habits} />
+           <HabitLeaderboard habits={habits} selectedMonth={selectedMonth} selectedYear={selectedYear} />
         </div>
       </div>
 

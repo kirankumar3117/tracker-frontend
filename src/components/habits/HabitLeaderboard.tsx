@@ -6,19 +6,57 @@ import { motion } from "framer-motion";
 
 interface HabitLeaderboardProps {
   habits: Habit[];
+  selectedMonth: number;
+  selectedYear: number;
 }
 
-export function HabitLeaderboard({ habits }: HabitLeaderboardProps) {
-  // Sort habits by completion percentage, then by streak
-  const sortedHabits = [...habits].sort((a, b) => {
+export function HabitLeaderboard({ habits, selectedMonth, selectedYear }: HabitLeaderboardProps) {
+  const startDate = new Date(selectedYear, selectedMonth, 1);
+  const endDate = new Date(selectedYear, selectedMonth + 1, 0);
+  const daysInMonth = endDate.getDate();
+
+  // Dynamically compute the month's stats instead of using the global mockData ones
+  const dynamicHabits = habits.map(habit => {
+    let activeDaysCount = 0;
+    for (let i = 1; i <= daysInMonth; i++) {
+        const d = new Date(selectedYear, selectedMonth, i);
+        let isActive = true;
+        if (habit.frequency && !habit.frequency.includes(d.getDay())) isActive = false;
+        
+        const compareTime = d.getTime();
+        if (isActive && habit.duration === "1-week") {
+            const start = new Date(habit.createdAt); start.setHours(0,0,0,0);
+            const end = new Date(start); end.setDate(end.getDate() + 6);
+            if (compareTime < start.getTime() || compareTime > end.getTime()) isActive = false;
+        } else if (isActive && habit.duration === "custom" && habit.customStartDate && habit.customEndDate) {
+            const start = new Date(habit.customStartDate); start.setHours(0,0,0,0);
+            const end = new Date(habit.customEndDate); end.setHours(0,0,0,0);
+            if (compareTime < start.getTime() || compareTime > end.getTime()) isActive = false;
+        }
+        if (isActive) activeDaysCount++;
+    }
+
+    const monthLogs = habit.logs.filter(l => {
+      const d = new Date(l.date);
+      return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+    });
+    const completedInMonth = monthLogs.filter(l => l.isCompleted).length;
+    const completionPercentage = activeDaysCount > 0 ? Math.round((completedInMonth / activeDaysCount) * 100) : 0;
+
+    // As requested: "the streak should be total number of days working overall that selected month"
+    // Keeping the flame icon design but changing the underlying math
+    const currentStreak = completedInMonth;
+
+    return { ...habit, completionPercentage, currentStreak };
+  });
+
+  // Sort dynamically
+  const sortedHabits = [...dynamicHabits].sort((a, b) => {
     if (b.completionPercentage !== a.completionPercentage) {
       return b.completionPercentage - a.completionPercentage;
     }
     return b.currentStreak - a.currentStreak;
   });
-
-  const today = new Date();
-  const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
 
   return (
     <div className="bg-card border border-border rounded-2xl p-5 w-full flex flex-col">

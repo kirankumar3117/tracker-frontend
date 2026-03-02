@@ -1,14 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Habit } from "@/types/habit";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { motion, AnimatePresence } from "framer-motion";
 import { DialogPortal, DialogOverlay } from "@radix-ui/react-dialog";
+import { Trash2 } from "lucide-react";
 
-export function HabitModal({ isOpen, onClose, onRefresh }: { isOpen: boolean; onClose: () => void; onRefresh: () => void }) {
+export function HabitModal({ isOpen, onClose, onRefresh, editHabit }: { isOpen: boolean; onClose: () => void; onRefresh: () => void; editHabit?: Habit | null }) {
   const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState("");
   const [priority, setPriority] = useState<"High" | "Medium" | "Low">("Medium");
@@ -17,6 +19,34 @@ export function HabitModal({ isOpen, onClose, onRefresh }: { isOpen: boolean; on
   const [frequency, setFrequency] = useState<number[]>([]);
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
+
+  useEffect(() => {
+    if (isOpen) {
+      if (editHabit) {
+        setTitle(editHabit.title);
+        setPriority(editHabit.priority);
+        setDuration(editHabit.duration);
+        setFrequencyMode(editHabit.frequency && editHabit.frequency.length < 7 ? "specific" : "everyday");
+        setFrequency(editHabit.frequency || []);
+        
+        if (editHabit.duration === "custom") {
+          setCustomStartDate(editHabit.customStartDate ? editHabit.customStartDate.split('T')[0] : "");
+          setCustomEndDate(editHabit.customEndDate ? editHabit.customEndDate.split('T')[0] : "");
+        } else {
+          setCustomStartDate("");
+          setCustomEndDate("");
+        }
+      } else {
+        setTitle("");
+        setPriority("Medium");
+        setDuration("all-time");
+        setFrequencyMode("everyday");
+        setFrequency([]);
+        setCustomStartDate("");
+        setCustomEndDate("");
+      }
+    }
+  }, [isOpen, editHabit]);
 
   const WEEKDAYS = [
     { label: 'M', value: 1 },
@@ -43,14 +73,23 @@ export function HabitModal({ isOpen, onClose, onRefresh }: { isOpen: boolean; on
     setLoading(true);
     // Simulate network delay for UI fluidity
     setTimeout(() => {
-      window.dispatchEvent(new CustomEvent('add-habit', { detail: { title, priority, duration, customStartDate, customEndDate, frequency: finalFrequency } }));
-      setTitle("");
-      setPriority("Medium");
-      setDuration("all-time");
-      setFrequencyMode("everyday");
-      setFrequency([]);
-      setCustomStartDate("");
-      setCustomEndDate("");
+      const payload = { title, priority, duration, customStartDate, customEndDate, frequency: finalFrequency };
+      if (editHabit) {
+        window.dispatchEvent(new CustomEvent('edit-habit', { detail: { id: editHabit.id, ...payload } }));
+      } else {
+        window.dispatchEvent(new CustomEvent('add-habit', { detail: payload }));
+      }
+      onRefresh();
+      onClose();
+      setLoading(false);
+    }, 400);
+  };
+
+  const handleDelete = () => {
+    if (!editHabit) return;
+    setLoading(true);
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('delete-habit', { detail: { id: editHabit.id } }));
       onRefresh();
       onClose();
       setLoading(false);
@@ -82,8 +121,12 @@ export function HabitModal({ isOpen, onClose, onRefresh }: { isOpen: boolean; on
                 className="w-full rounded-[24px] border border-white/10 dark:border-white/5 bg-card/95 p-7 shadow-2xl backdrop-blur-xl supports-[backdrop-filter]:bg-card/80"
               >
                 <DialogHeader className="mb-6 space-y-1">
-                  <DialogTitle className="text-2xl font-bold tracking-tight text-foreground">New Habit</DialogTitle>
-                  <p className="text-sm text-muted-foreground font-medium">What daily action builds your identity?</p>
+                  <DialogTitle className="text-2xl font-bold tracking-tight text-foreground">
+                    {editHabit ? "Edit Habit" : "New Habit"}
+                  </DialogTitle>
+                  <p className="text-sm text-muted-foreground font-medium">
+                    {editHabit ? "Refine your daily routine details." : "What daily action builds your identity?"}
+                  </p>
                 </DialogHeader>
                 
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -199,24 +242,41 @@ export function HabitModal({ isOpen, onClose, onRefresh }: { isOpen: boolean; on
                     </AnimatePresence>
                   </div>
 
-                  <div className="pt-4 flex justify-end gap-3">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={onClose}
-                      className="rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent/50 h-11 px-5"
-                    >
-                      Cancel
-                    </Button>
-                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                  <div className="pt-4 flex justify-between gap-3">
+                    {editHabit ? (
                       <Button
-                        type="submit"
-                        disabled={loading || !title.trim() || (frequencyMode === "specific" && frequency.length === 0)}
-                        className="rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 shadow-[0_0_20px_rgba(217,119,6,0.2)] disabled:opacity-50 disabled:shadow-none h-11 px-6 border-none"
+                        type="button"
+                        variant="ghost"
+                        onClick={handleDelete}
+                        disabled={loading}
+                        className="rounded-xl text-red-500 hover:text-red-600 hover:bg-red-500/10 h-11 px-4 font-bold"
                       >
-                        {loading ? "Saving..." : "Create Habit"}
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete
                       </Button>
-                    </motion.div>
+                    ) : (
+                      <div className="flex-1" />
+                    )}
+                    
+                    <div className="flex items-center gap-3">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={onClose}
+                        className="rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent/50 h-11 px-5"
+                      >
+                        Cancel
+                      </Button>
+                      <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                        <Button
+                          type="submit"
+                          disabled={loading || !title.trim() || (frequencyMode === "specific" && frequency.length === 0)}
+                          className="rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 shadow-[0_0_20px_rgba(217,119,6,0.2)] disabled:opacity-50 disabled:shadow-none h-11 px-6 border-none"
+                        >
+                          {loading ? "Saving..." : editHabit ? "Save Changes" : "Create Habit"}
+                        </Button>
+                      </motion.div>
+                    </div>
                   </div>
                 </form>
               </motion.div>

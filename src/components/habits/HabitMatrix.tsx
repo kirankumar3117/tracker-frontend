@@ -1,10 +1,11 @@
 "use client";
 
 import { Habit } from "@/types/habit";
+
 import { format, eachDayOfInterval } from "date-fns";
-import { Check, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Check, Loader2, ChevronLeft, ChevronRight, Edit2 } from "lucide-react";
 import { motion } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, Dispatch, SetStateAction } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -12,9 +13,13 @@ interface HabitMatrixProps {
   habits: Habit[];
   onToggleLog: (habitId: string, date: Date, isCompleted: boolean) => void;
   loadingHabitId: string | null;
+  selectedMonth: number;
+  setSelectedMonth: Dispatch<SetStateAction<number>>;
+  selectedYear: number;
+  setSelectedYear: Dispatch<SetStateAction<number>>;
 }
 
-export function HabitMatrix({ habits, onToggleLog, loadingHabitId }: HabitMatrixProps) {
+export function HabitMatrix({ habits, onToggleLog, loadingHabitId, selectedMonth, setSelectedMonth, selectedYear, setSelectedYear }: HabitMatrixProps) {
   const priorityWeight = { "High": 3, "Medium": 2, "Low": 1 };
   const sortedHabits = [...habits].sort((a, b) => priorityWeight[b.priority] - priorityWeight[a.priority]);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -22,8 +27,6 @@ export function HabitMatrix({ habits, onToggleLog, loadingHabitId }: HabitMatrix
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const [selectedMonth, setSelectedMonth] = useState<number>(today.getMonth());
-  const [selectedYear, setSelectedYear] = useState<number>(today.getFullYear());
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
 
@@ -191,7 +194,7 @@ export function HabitMatrix({ habits, onToggleLog, loadingHabitId }: HabitMatrix
         <div className="min-w-max">
           {/* Header Row */}
           <div className="flex items-center border-b border-border bg-muted/30">
-            <div className="w-48 shrink-0 px-4 py-3 font-semibold text-sm text-muted-foreground border-r border-border sticky left-0 bg-card z-20 shadow-[2px_0_10px_-3px_rgba(0,0,0,0.1)] flex flex-col justify-center gap-0.5">
+            <div className="w-56 shrink-0 px-4 py-3 font-semibold text-sm text-muted-foreground border-r border-border sticky left-0 bg-background z-20 shadow-[2px_0_10px_-3px_rgba(0,0,0,0.1)] flex flex-col justify-center gap-0.5">
               <span className="text-foreground">Habit</span>
               <span className="text-xs font-normal">Current {daysInMonth} Days</span>
             </div>
@@ -219,19 +222,25 @@ export function HabitMatrix({ habits, onToggleLog, loadingHabitId }: HabitMatrix
           {visibleHabits.length === 0 ? (
              <div className="p-8 text-center text-sm text-muted-foreground">No habits found. Generate a baseline or add one.</div>
           ) : visibleHabits.map((habit, idx) => (
-            <div key={habit.id} className={`flex items-center ${idx !== visibleHabits.length - 1 ? 'border-b border-border' : ''} hover:bg-muted/10 transition-colors`}>
-              <div className="w-48 shrink-0 px-4 py-3 font-medium text-sm text-foreground border-r border-border sticky left-0 bg-card z-10 shadow-[2px_0_10px_-3px_rgba(0,0,0,0.1)] flex flex-col justify-center gap-1.5">
+            <div key={habit.id} className={`flex items-center ${idx !== visibleHabits.length - 1 ? 'border-b border-border' : ''} group/row`}>
+              <div 
+                onClick={() => window.dispatchEvent(new CustomEvent('open-edit-modal', { detail: habit }))}
+                className="w-56 shrink-0 px-4 py-3 font-medium text-sm text-foreground border-r border-border sticky left-0 z-10 shadow-[2px_0_10px_-3px_rgba(0,0,0,0.1)] flex flex-col justify-center gap-1.5 cursor-pointer bg-card transition-colors"
+              >
                 <div className="flex items-center gap-2 w-full">
                   <TooltipProvider delayDuration={300}>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <span className="truncate flex-1 cursor-default">{habit.title}</span>
+                        <span className="truncate flex-1">{habit.title}</span>
                       </TooltipTrigger>
                       <TooltipContent side="top" align="start" className="max-w-[250px] break-words z-50 rounded-xl">
                         <p className="font-medium text-sm">{habit.title}</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
+
+                  <Edit2 className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover/row:opacity-100 transition-opacity shrink-0" />
+
                   <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wider ${
                     habit.priority === 'High' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
                     habit.priority === 'Medium' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' :
