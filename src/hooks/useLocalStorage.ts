@@ -9,19 +9,21 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T 
 
   // Hydrate state from localStorage only after the component mounts on the client
   useEffect(() => {
-    setIsMounted(true);
-    try {
-      const item = window.localStorage.getItem(key);
-      if (item) {
-        // Hydrate from local storage but ensure functions aren't parsed incorrectly
-        setStoredValue(JSON.parse(item));
-      } else {
-        // Apply initial value to storage if it didn't exist
-        window.localStorage.setItem(key, JSON.stringify(initialValue));
+    setTimeout(() => {
+      setIsMounted(true);
+      try {
+        const item = window.localStorage.getItem(key);
+        if (item) {
+          // Hydrate from local storage but ensure functions aren't parsed incorrectly
+          setStoredValue(JSON.parse(item));
+        } else {
+          // Apply initial value to storage if it didn't exist
+          window.localStorage.setItem(key, JSON.stringify(initialValue));
+        }
+      } catch (error) {
+        console.error("Error reading localStorage key “" + key + "”:", error);
       }
-    } catch (error) {
-      console.error("Error reading localStorage key “" + key + "”:", error);
-    }
+    }, 0);
   }, [key, initialValue]);
 
   // Return a wrapped version of useState's setter function that persists the new value

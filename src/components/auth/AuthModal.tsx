@@ -4,7 +4,8 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, Mail, Lock, User, Github } from "lucide-react";
+import { Loader2, Mail, Lock, User } from "lucide-react";
+import { loginUser, registerUser } from "@/lib/api/auth";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -45,74 +46,46 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
     setLoading(true);
 
     try {
+      let data;
       if (!isLogin) {
         // Registration Flow
-        const response = await fetch("http://localhost:8000/api/v1/auth/register", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name,
-            email,
-            password,
-            confirmPassword,
-          }),
-        });
-
-        const data = await response.json();
-
-        if (!response.ok || !data.success) {
-          throw new Error(data.message || data.detail || "Registration failed");
-        }
-
-        // Successfully registered
-        const user = {
-          name: data.data.user.name,
-          email: data.data.user.email,
-        };
-        
-        // Save to local storage mock or update token logic as needed
-        localStorage.setItem("tracker-user", JSON.stringify(user));
-        if (data.data.token) {
-           localStorage.setItem("tracker-token", data.data.token);
-        }
-        
-        onSuccess(user);
-        onClose();
-        
-        // Reset form
-        setName("");
-        setEmail("");
-        setPassword("");
-        setConfirmPassword("");
+        data = await registerUser({ name, email, password, confirmPassword });
       } else {
-        // Login Flow (keeping existing mock or structure for now until similar API is provided)
-        // Simulate network delay for login
-        setTimeout(() => {
-          const user = {
-            name: email.split('@')[0],
-            email: email,
-          };
-          
-          localStorage.setItem("tracker-user", JSON.stringify(user));
-          onSuccess(user);
-          onClose();
-          
-          setName("");
-          setEmail("");
-          setPassword("");
-          setConfirmPassword("");
-          setLoading(false);
-        }, 1000);
-        return; // Early return because setTimeout handles setLoading(false)
+        // Login Flow
+        data = await loginUser({ email, password });
       }
-    } catch (err: any) {
-      setError(err.message || "An error occurred during authentication.");
+
+      // Successfully authenticated
+      const user = {
+        name: data.user.name,
+        email: data.user.email,
+      };
+      
+      // Handle the token - Save in HTTP Cookie for Server/Middleware capability
+      // and keep in localStorage for immediate client-side API headers
+      if (data.token) {
+         document.cookie = `tracker-token=${data.token}; path=/; max-age=2592000; SameSite=Lax`;
+         localStorage.setItem("tracker-token", data.token);
+      }
+      
+      localStorage.setItem("tracker-user", JSON.stringify(user));
+      
+      // Dispatch event for other components (like Dashboard Matrix) to trigger a fresh data payload fetch
+      window.dispatchEvent(new Event('auth-success'));
+      
+      onSuccess(user);
+      onClose();
+      
+      // Reset form
+      setName("");
+      setEmail("");
+      setPassword("");
+      setConfirmPassword("");
+      
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred during authentication.");
     } finally {
-      if (!isLogin) {
-        setLoading(false);
-      }
+      setLoading(false);
     }
   };
 

@@ -25,7 +25,7 @@ export function Header() {
     const stored = localStorage.getItem("tracker-user");
     if (stored) {
       try {
-        setUser(JSON.parse(stored));
+        setTimeout(() => setUser(JSON.parse(stored)), 0);
       } catch (e) {
         // ignore
       }

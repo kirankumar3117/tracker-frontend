@@ -1,3 +1,5 @@
+import apiClient from "../axios";
+
 export interface RegisterPayload {
   name: string;
   email: string;
@@ -5,37 +7,40 @@ export interface RegisterPayload {
   confirmPassword?: string;
 }
 
-export interface RegisterResponse {
-  message?: string;
-  error?: string;
-  [key: string]: any;
+export interface LoginPayload {
+  email: string;
+  password: string;
 }
 
-const API_BASE_URL = "http://localhost:8000";
+export interface AuthResponse {
+  user: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  token: string;
+}
 
-export const registerUser = async (payload: RegisterPayload): Promise<RegisterResponse> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/v1/auth/register`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name: payload.name,
-        email: payload.email,
-        password: payload.password,
-        confirm_password: payload.confirmPassword,
-      }),
-    });
+/**
+ * Registers a new user account.
+ * 
+ * @param payload - The user details required for registration (name, email, password, confirmPassword)
+ * @returns The structured user object and JWT token
+ */
+export const registerUser = async (payload: RegisterPayload): Promise<AuthResponse> => {
+  // Axios response interceptor unwraps `{ success: true, data: {...} }` and returns `.data` directly
+  const response = await apiClient.post<unknown, AuthResponse>("/auth/register", payload);
+  return response;
+};
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.detail || data.message || "Registration failed");
-    }
-
-    return data;
-  } catch (error: any) {
-    throw error;
-  }
+/**
+ * Authenticates an existing user.
+ * 
+ * @param payload - The user credentials required for login (email, password)
+ * @returns The structured user object and JWT token
+ */
+export const loginUser = async (payload: LoginPayload): Promise<AuthResponse> => {
+  // Axios response interceptor unwraps `{ success: true, data: {...} }` and returns `.data` directly
+  const response = await apiClient.post<unknown, AuthResponse>("/auth/login", payload);
+  return response;
 };

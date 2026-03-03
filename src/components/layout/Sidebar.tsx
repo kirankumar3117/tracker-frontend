@@ -32,7 +32,8 @@ export function Sidebar() {
     const stored = localStorage.getItem("tracker-user");
     if (stored) {
       try {
-        setUser(JSON.parse(stored));
+        // Defer state update slightly to prevent synchronous cascading
+        setTimeout(() => setUser(JSON.parse(stored)), 0);
       } catch (e) {
         console.error("Failed to parse user", e);
       }

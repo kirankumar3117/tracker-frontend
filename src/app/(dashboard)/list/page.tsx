@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Habit } from "@/types/habit";
+import { getHabits, createHabit, updateHabit, deleteHabit, toggleHabitLog, bulkUpdateHabitLogs } from "@/lib/api/habits";
 import { MOCK_HABITS, recalculateAllMetrics, getMockHabits } from "@/lib/mockData";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { HabitMatrix } from "@/components/habits/HabitMatrix";
@@ -20,6 +21,7 @@ export default function Dashboard() {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasChanges, setHasChanges] = useState(false);
+  const [pendingLogs, setPendingLogs] = useState<Array<{ habitId: string; date: string; isCompleted: boolean }>>([]);
   
   const today = new Date();
   const [selectedMonth, setSelectedMonth] = useState<number>(today.getMonth());
@@ -61,7 +63,7 @@ export default function Dashboard() {
        if (saved && lastKnownState === currentStateStr) {
            try {
              const parsed = JSON.parse(saved);
-             const validatedHabits = parsed.map((h: any) => ({
+             const validatedHabits = parsed.map((h: Habit) => ({
                 ...h,
                 priority: h.priority || "Medium",
                 duration: h.duration || "all-time",
@@ -102,49 +104,86 @@ export default function Dashboard() {
       }, 1200);
     }
 
-    const handleAddHabit = (e: Event) => {
+    const fetchFreshHabits = async () => {
+       const userStr = localStorage.getItem("tracker-user");
+       if (userStr) {
+         try {
+           setUser(JSON.parse(userStr));
+           const freshHabits = await getHabits(selectedMonth + 1, selectedYear);
+           setHabits(freshHabits);
+           localStorage.setItem("tracker-last-login-state", "logged-in");
+         } catch (e) {
+           console.error("Failed fetching fresh habits post-auth", e);
+         }
+       }
+    };
+
+    window.addEventListener('auth-success', fetchFreshHabits);
+
+    const handleAddHabit = async (e: Event) => {
       const customEvent = e as CustomEvent;
-      const newHabit: Habit = {
-        id: `mock-${Date.now()}`,
-        userId: "local-user",
+      const newHabitPayload = {
         title: customEvent.detail.title,
         priority: customEvent.detail.priority || "Medium",
         duration: customEvent.detail.duration || "all-time",
         frequency: customEvent.detail.frequency || [0, 1, 2, 3, 4, 5, 6],
         customStartDate: customEvent.detail.customStartDate,
         customEndDate: customEvent.detail.customEndDate,
-        createdAt: new Date().toISOString(),
-        logs: [],
-        currentStreak: 0,
-        bestStreak: 0,
-        completionPercentage: 0,
       };
-      setHabits(prev => {
-        return [newHabit, ...prev];
-      });
+
+      if (isLoggedIn) {
+        try {
+           const created = await createHabit(newHabitPayload);
+           setHabits(prev => [created, ...prev]);
+        } catch(err) {
+           console.error("Failed creating via API", err);
+        }
+      } else {
+        const newHabit: Habit = {
+          id: `mock-${Date.now()}`,
+          userId: "local-user",
+          ...newHabitPayload,
+          createdAt: new Date().toISOString(),
+          logs: [],
+          currentStreak: 0,
+          bestStreak: 0,
+          completionPercentage: 0,
+        };
+        setHabits(prev => [newHabit, ...prev]);
+      }
     };
 
-    const handleEditHabit = (e: Event) => {
+    const handleEditHabit = async (e: Event) => {
       const customEvent = e as CustomEvent;
       const { id, title, priority, duration, customStartDate, customEndDate, frequency } = customEvent.detail;
-      setHabits(prev => {
-        return prev.map(h => h.id === id ? {
-          ...h,
-          title,
-          priority: priority || "Medium",
-          duration: duration || "all-time",
-          customStartDate,
-          customEndDate,
-          frequency: frequency || [0, 1, 2, 3, 4, 5, 6],
-        } : h);
-      });
+      
+      if (isLoggedIn && !id.startsWith('mock-')) {
+         try {
+            const updated = await updateHabit(id, { title, priority, duration, customStartDate, customEndDate, frequency });
+            setHabits(prev => prev.map(h => h.id === id ? updated : h));
+         } catch(err) {
+            console.error("Failed updating via API");
+         }
+      } else {
+        setHabits(prev => prev.map(h => h.id === id ? {
+          ...h, title, priority: priority || "Medium", duration: duration || "all-time", customStartDate, customEndDate, frequency: frequency || [0, 1, 2, 3, 4, 5, 6],
+        } : h));
+      }
     };
 
-    const handleDeleteHabit = (e: Event) => {
+    const handleDeleteHabit = async (e: Event) => {
       const customEvent = e as CustomEvent;
-      setHabits(prev => {
-        return prev.filter(h => h.id !== customEvent.detail.id);
-      });
+      const id = customEvent.detail.id;
+      if (isLoggedIn && !id.startsWith('mock-')) {
+         try {
+            await deleteHabit(id);
+            setHabits(prev => prev.filter(h => h.id !== id));
+         } catch(err) {
+            console.error(err);
+         }
+      } else {
+         setHabits(prev => prev.filter(h => h.id !== id));
+      }
     };
 
     const handleSkipConversion = () => {
@@ -158,6 +197,7 @@ export default function Dashboard() {
 
     return () => {
       clearTimeout(timer);
+      window.removeEventListener('auth-success', fetchFreshHabits);
       window.removeEventListener('add-habit', handleAddHabit);
       window.removeEventListener('edit-habit', handleEditHabit);
       window.removeEventListener('delete-habit', handleDeleteHabit);
@@ -166,15 +206,29 @@ export default function Dashboard() {
   }, []);
 
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    console.log("handleSave", user, pendingLogs);
+    return;
     if (!user) {
       window.dispatchEvent(new Event('open-conversion-modal'));
     } else {
-      setHasChanges(false);
+      if (pendingLogs.length > 0) {
+         try {
+            await bulkUpdateHabitLogs(pendingLogs);
+            setHasChanges(false);
+            setPendingLogs([]);
+            // Optional: Refetch from backend to ensure integrity, but local state shouldn't be too far off
+         } catch(e) {
+            console.error("Failed to bulk save logs");
+         }
+      } else {
+         setHasChanges(false);
+      }
     }
   };
 
   const handleToggleLog = async (habitId: string, date: Date, isCompleted: boolean) => {
+    // Optimistic UI Update
     setHabits(prev => prev.map(h => {
       if (h.id === habitId) {
         const existingLogIndex = h.logs.findIndex(l => {
@@ -189,14 +243,27 @@ export default function Dashboard() {
         if (existingLogIndex >= 0) {
           newLogs[existingLogIndex] = { ...newLogs[existingLogIndex], isCompleted };
         } else {
-          newLogs.push({ id: `log-${Date.now()}`, habitId, date: date.toISOString(), isCompleted });
+          newLogs.push({ id: `temp-${Date.now()}`, habitId, date: date.toISOString(), isCompleted });
         }
+
+        console.log("newLogs", newLogs);
         
         return recalculateAllMetrics({ ...h, logs: newLogs });
       }
       return h;
     }));
-    setHasChanges(true); // Show the save button
+
+    if (user && !habitId.startsWith('mock-')) {
+       // Using the bulk update endpoint logic (Queuing in pendingLogs to send on 'Save')
+       setPendingLogs(prev => {
+          // Remove previous modifications for same habit/date
+          const filtered = prev.filter(p => !(p.habitId === habitId && new Date(p.date).setHours(0,0,0,0) === date.setHours(0,0,0,0)));
+          return [...filtered, { habitId, date: date.toISOString(), isCompleted }];
+       });
+       setHasChanges(true); 
+    } else {
+       setHasChanges(true); // For anonymous users to see the save button conversion prompt
+    }
   };
 
   // Calculate day's percentage
