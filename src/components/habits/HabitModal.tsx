@@ -69,17 +69,25 @@ export function HabitModal({ isOpen, onClose, onRefresh, editHabit }: { isOpen: 
     if (frequencyMode === "specific" && frequency.length === 0) return;
 
     const finalFrequency = frequencyMode === "everyday" ? [0, 1, 2, 3, 4, 5, 6] : frequency;
+    
+    // The backend expects full ISO strings, but the HTML input only provides "YYYY-MM-DD"
+    // We parse it and append the current time safely to make it a valid ISO string payload
+    let finalStartDate = customStartDate;
+    let finalEndDate = customEndDate;
+    if (duration === "custom") {
+       finalStartDate = new Date(customStartDate).toISOString();
+       finalEndDate = new Date(customEndDate).toISOString();
+    }
 
     setLoading(true);
     // Simulate network delay for UI fluidity
     setTimeout(() => {
-      const payload = { title, priority, duration, customStartDate, customEndDate, frequency: finalFrequency };
+      const payload = { title, priority, duration, customStartDate: finalStartDate, customEndDate: finalEndDate, frequency: finalFrequency };
       if (editHabit) {
         window.dispatchEvent(new CustomEvent('edit-habit', { detail: { id: editHabit.id, ...payload } }));
       } else {
         window.dispatchEvent(new CustomEvent('add-habit', { detail: payload }));
       }
-      onRefresh();
       onClose();
       setLoading(false);
     }, 400);
@@ -90,7 +98,6 @@ export function HabitModal({ isOpen, onClose, onRefresh, editHabit }: { isOpen: 
     setLoading(true);
     setTimeout(() => {
       window.dispatchEvent(new CustomEvent('delete-habit', { detail: { id: editHabit.id } }));
-      onRefresh();
       onClose();
       setLoading(false);
     }, 400);

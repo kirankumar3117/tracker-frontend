@@ -41,9 +41,22 @@ export function Sidebar() {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem("tracker-user");
-    setUser(null);
+    // We dispatch this to give the Dashboard a chance to intercept and warn the user
+    // if they have unsaved matrix log changes.
+    window.dispatchEvent(new Event('request-logout'));
   };
+
+  useEffect(() => {
+    const executeLogout = () => {
+      document.cookie = "tracker-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      localStorage.removeItem("tracker-token");
+      localStorage.removeItem("tracker-user");
+      setUser(null);
+    };
+
+    window.addEventListener('execute-logout', executeLogout);
+    return () => window.removeEventListener('execute-logout', executeLogout);
+  }, []);
 
   return (
     <aside className="fixed inset-y-0 left-0 w-64 border-r border-border bg-background/80 backdrop-blur-xl flex flex-col py-6 px-4 z-50">

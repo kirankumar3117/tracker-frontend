@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { Habit } from "@/types/habit";
-import { getHabits, createHabit, updateHabit, deleteHabit, toggleHabitLog, bulkUpdateHabitLogs } from "@/lib/api/habits";
+import { getHabits, createHabit, updateHabit, deleteHabit, bulkUpdateHabitLogs } from "@/lib/api/habits";
 import { MOCK_HABITS, recalculateAllMetrics, getMockHabits } from "@/lib/mockData";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { HabitMatrix } from "@/components/habits/HabitMatrix";
@@ -19,122 +19,135 @@ export default function Dashboard() {
   
   // Since we need to know if the user is logged in before setting Initial State
   const [habits, setHabits] = useState<Habit[]>([]);
+  // Store original server state to compare dirtiness vs local overrides
+  const [originalHabits, setOriginalHabits] = useState<Habit[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasChanges, setHasChanges] = useState(false);
+  
   const [pendingLogs, setPendingLogs] = useState<Array<{ habitId: string; date: string; isCompleted: boolean }>>([]);
+  // We need a ref for the pending logs to access them inside the beforeunload listener safely without stale closures
+  const pendingLogsRef = useRef(pendingLogs);
+  useEffect(() => { pendingLogsRef.current = pendingLogs; }, [pendingLogs]);
   
   const today = new Date();
   const [selectedMonth, setSelectedMonth] = useState<number>(today.getMonth());
   const [selectedYear, setSelectedYear] = useState<number>(today.getFullYear());
 
+  // --------------------------------------------------------------------------
+  // CENTRALIZED FETCHING LOGIC
+  // --------------------------------------------------------------------------
+  const fetchHabits = useCallback(async (isLoggedIn: boolean) => {
+    if (isLoggedIn) {
+      setLoading(true);
+      try {
+        const freshHabits = await getHabits(selectedMonth + 1, selectedYear);
+        
+        // Re-apply any pending logs the user hasn't saved yet on top of the server response
+        // so they don't visually disappear when traversing months
+        const mergedHabits = freshHabits.map(serverHabit => {
+           let updatedHabit = { ...serverHabit };
+           pendingLogsRef.current.forEach(pl => {
+              if (pl.habitId === serverHabit.id) {
+                 const existingLogIndex = updatedHabit.logs.findIndex(l => {
+                    const lDate = new Date(l.date); lDate.setHours(0,0,0,0);
+                    const dDate = new Date(pl.date); dDate.setHours(0,0,0,0);
+                    return lDate.getTime() === dDate.getTime();
+                 });
+                 const newLogs = [...updatedHabit.logs];
+                 if (existingLogIndex >= 0) newLogs[existingLogIndex] = { ...newLogs[existingLogIndex], isCompleted: pl.isCompleted };
+                 else newLogs.push({ id: `temp-${Date.now()}`, habitId: serverHabit.id, date: pl.date, isCompleted: pl.isCompleted });
+                 updatedHabit = recalculateAllMetrics({ ...updatedHabit, logs: newLogs });
+              }
+           });
+           return updatedHabit;
+        });
+
+        setOriginalHabits(freshHabits);
+        setHabits(mergedHabits);
+        localStorage.setItem("tracker-last-login-state", "logged-in");
+      } catch (e) {
+        console.error("Failed fetching habits in Dashboard", e);
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      // Mock Data Path
+      const saved = localStorage.getItem("tracker-mock-habits");
+      const lastKnownState = localStorage.getItem("tracker-last-login-state");
+      
+      if (saved && lastKnownState === "logged-out") {
+          try {
+            const parsed = JSON.parse(saved);
+            const validatedHabits = parsed.map((h: Habit) => ({
+                ...h, priority: h.priority || "Medium", duration: h.duration || "all-time", frequency: h.frequency || [0, 1, 2, 3, 4, 5, 6]
+            }));
+            setOriginalHabits(validatedHabits);
+            setHabits(validatedHabits);
+          } catch(e) {
+            const fresh = getMockHabits(false);
+            setOriginalHabits(fresh);
+            setHabits(fresh);
+            localStorage.setItem("tracker-mock-habits", JSON.stringify(fresh));
+          }
+      } else {
+          const fresh = getMockHabits(false);
+          setOriginalHabits(fresh);
+          setHabits(fresh);
+          localStorage.setItem("tracker-mock-habits", JSON.stringify(fresh));
+          localStorage.setItem("tracker-last-login-state", "logged-out");
+      }
+      setTimeout(() => setLoading(false), 500);
+    }
+  }, [selectedMonth, selectedYear]);
+
+
   useEffect(() => {
-    let isLoggedIn = false;
+    // 1. Initial Authentication Bootstrap & Dynamic Month Triggers
+    let initialIsLoggedIn = false;
     let storedUserStr = null;
     
-    // 1. Check Auth 
     if (typeof window !== "undefined") {
       storedUserStr = localStorage.getItem("tracker-user");
       if (storedUserStr) {
         try {
-           const parsedUser = JSON.parse(storedUserStr);
-           setUser(parsedUser);
-           isLoggedIn = true;
+           setUser(JSON.parse(storedUserStr));
+           initialIsLoggedIn = true;
         } catch (e) {}
+      }
+
+      // Purge old mock style
+      if (!localStorage.getItem("tracker-purged-v2")) {
+        localStorage.removeItem("tracker-mock-habits");
+        localStorage.setItem("tracker-purged-v2", "true");
+        window.location.reload(); 
+        return;
       }
     }
 
-    // 2. ONE-TIME PURGE of old local storage mock data to force "today only" checkboxes
-    if (typeof window !== "undefined" && !localStorage.getItem("tracker-purged-v2")) {
-      localStorage.removeItem("tracker-mock-habits");
-      localStorage.setItem("tracker-purged-v2", "true");
-      window.location.reload(); // Reload immediately to pull fresh MOCK_HABITS with only today active
-      return;
-    }
+    fetchHabits(initialIsLoggedIn);
+  }, [fetchHabits]);
 
-    // 3. Load or Generate Mock Habits depending on Login State
-    if (typeof window !== "undefined") {
-       const saved = localStorage.getItem("tracker-mock-habits");
-       
-       // Force regeneration if the habits in storage don't match the expected current login context
-       // To do this simply, if they are logging in, we just flush the old anonymous habits and generate fresh
-       const lastKnownState = localStorage.getItem("tracker-last-login-state");
-       const currentStateStr = isLoggedIn ? "logged-in" : "logged-out";
-       
-       if (saved && lastKnownState === currentStateStr) {
-           try {
-             const parsed = JSON.parse(saved);
-             const validatedHabits = parsed.map((h: Habit) => ({
-                ...h,
-                priority: h.priority || "Medium",
-                duration: h.duration || "all-time",
-                frequency: h.frequency || [0, 1, 2, 3, 4, 5, 6]
-             }));
-             setHabits(validatedHabits);
-           } catch(e) {
-             const fresh = getMockHabits(isLoggedIn);
-             setHabits(fresh);
-             localStorage.setItem("tracker-mock-habits", JSON.stringify(fresh));
-           }
-       } else {
-           const fresh = getMockHabits(isLoggedIn);
-           setHabits(fresh);
-           localStorage.setItem("tracker-mock-habits", JSON.stringify(fresh));
-           localStorage.setItem("tracker-last-login-state", currentStateStr);
-       }
-    }
 
-    // Simulate loading to mimic fetching data
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 500);
-
-    const hasSeenTour = localStorage.getItem("tracker-tour-seen");
-    if (!hasSeenTour) {
-      setTimeout(() => {
-        const d = driver({
-          showProgress: true,
-          steps: [
-            { element: '.tour-matrix', popover: { title: 'Habit Matrix', description: 'Check off your daily habits here. Click on a habit name to edit or delete it.', side: "bottom" } },
-            { element: '.tour-visuals', popover: { title: 'Visual Analytics', description: 'Monitor your performance trends and tracking volume over the weeks.', side: "top" } },
-            { element: '.tour-leaderboard', popover: { title: 'Consistency Leaderboard', description: 'Track your total active days and mastery percentage up to the selected month.', side: "left" } },
-          ]
-        });
-        d.drive();
-        localStorage.setItem("tracker-tour-seen", "true");
-      }, 1200);
-    }
-
-    const fetchFreshHabits = async () => {
-       const userStr = localStorage.getItem("tracker-user");
-       if (userStr) {
-         try {
-           setUser(JSON.parse(userStr));
-           const freshHabits = await getHabits(selectedMonth + 1, selectedYear);
-           setHabits(freshHabits);
-           localStorage.setItem("tracker-last-login-state", "logged-in");
-         } catch (e) {
-           console.error("Failed fetching fresh habits post-auth", e);
-         }
-       }
-    };
-
-    window.addEventListener('auth-success', fetchFreshHabits);
-
+  // 2. Global Event Listeners & Modals
+  useEffect(() => {
     const handleAddHabit = async (e: Event) => {
       const customEvent = e as CustomEvent;
-      const newHabitPayload = {
+      const newHabitPayload: any = {
         title: customEvent.detail.title,
         priority: customEvent.detail.priority || "Medium",
         duration: customEvent.detail.duration || "all-time",
         frequency: customEvent.detail.frequency || [0, 1, 2, 3, 4, 5, 6],
-        customStartDate: customEvent.detail.customStartDate,
-        customEndDate: customEvent.detail.customEndDate,
       };
+      
+      if (customEvent.detail.duration === "custom" && customEvent.detail.customStartDate && customEvent.detail.customEndDate) {
+         newHabitPayload.customStartDate = customEvent.detail.customStartDate;
+         newHabitPayload.customEndDate = customEvent.detail.customEndDate;
+      }
 
-      if (isLoggedIn) {
+      if (user) {
         try {
-           const created = await createHabit(newHabitPayload);
-           setHabits(prev => [created, ...prev]);
+           await createHabit(newHabitPayload);
+           fetchHabits(true);
         } catch(err) {
            console.error("Failed creating via API", err);
         }
@@ -157,10 +170,10 @@ export default function Dashboard() {
       const customEvent = e as CustomEvent;
       const { id, title, priority, duration, customStartDate, customEndDate, frequency } = customEvent.detail;
       
-      if (isLoggedIn && !id.startsWith('mock-')) {
+      if (user && !id.startsWith('mock-')) {
          try {
-            const updated = await updateHabit(id, { title, priority, duration, customStartDate, customEndDate, frequency });
-            setHabits(prev => prev.map(h => h.id === id ? updated : h));
+            await updateHabit(id, { title, priority, duration, customStartDate, customEndDate, frequency });
+            fetchHabits(true);
          } catch(err) {
             console.error("Failed updating via API");
          }
@@ -174,10 +187,10 @@ export default function Dashboard() {
     const handleDeleteHabit = async (e: Event) => {
       const customEvent = e as CustomEvent;
       const id = customEvent.detail.id;
-      if (isLoggedIn && !id.startsWith('mock-')) {
+      if (user && !id.startsWith('mock-')) {
          try {
             await deleteHabit(id);
-            setHabits(prev => prev.filter(h => h.id !== id));
+            fetchHabits(true);
          } catch(err) {
             console.error(err);
          }
@@ -195,20 +208,62 @@ export default function Dashboard() {
     window.addEventListener('delete-habit', handleDeleteHabit);
     window.addEventListener('skip-conversion-modal', handleSkipConversion);
 
+    const handleForceLogout = () => {
+       // This triggers when user accepts the "you have unsaved changes" confirmation
+       // or directly if they had no unsaved changes.
+       setPendingLogs([]);
+       setHasChanges(false);
+       setOriginalHabits([]);
+       setHabits([]);
+       setUser(null);
+       fetchHabits(false); // Refetch anonymous mock state
+    };
+
+    const handleLogoutIntercept = (e: Event) => {
+       if (pendingLogsRef.current.length > 0) {
+          const proceed = window.confirm("You have unsaved log changes. Logging out will discard these updates. Are you sure you want to log out?");
+          if (proceed) {
+             handleForceLogout();
+             window.dispatchEvent(new Event('execute-logout')); // Let Sidebar clear storage
+          }
+       } else {
+          handleForceLogout();
+          window.dispatchEvent(new Event('execute-logout'));
+       }
+    };
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+       if (pendingLogsRef.current.length > 0) {
+          e.preventDefault();
+          e.returnValue = "You have unsaved changes. Are you sure you want to leave?";
+          return e.returnValue;
+       }
+    };
+    
+    // Auth success listener should now just forcefully refetch based on the new custom hook variables
+    const handleAuthSuccess = () => fetchHabits(true);
+
+    window.addEventListener('auth-success', handleAuthSuccess);
+    window.addEventListener('request-logout', handleLogoutIntercept);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('add-habit', handleAddHabit);
+    window.addEventListener('edit-habit', handleEditHabit);
+    window.addEventListener('delete-habit', handleDeleteHabit);
+    window.addEventListener('skip-conversion-modal', handleSkipConversion);
+
     return () => {
-      clearTimeout(timer);
-      window.removeEventListener('auth-success', fetchFreshHabits);
+      window.removeEventListener('auth-success', handleAuthSuccess);
+      window.removeEventListener('request-logout', handleLogoutIntercept);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('add-habit', handleAddHabit);
       window.removeEventListener('edit-habit', handleEditHabit);
       window.removeEventListener('delete-habit', handleDeleteHabit);
       window.removeEventListener('skip-conversion-modal', handleSkipConversion);
     };
-  }, []);
+  }, [user, fetchHabits]);
 
 
   const handleSave = async () => {
-    console.log("handleSave", user, pendingLogs);
-    return;
     if (!user) {
       window.dispatchEvent(new Event('open-conversion-modal'));
     } else {
@@ -254,15 +309,36 @@ export default function Dashboard() {
     }));
 
     if (user && !habitId.startsWith('mock-')) {
-       // Using the bulk update endpoint logic (Queuing in pendingLogs to send on 'Save')
+       
        setPendingLogs(prev => {
-          // Remove previous modifications for same habit/date
+          // 1. Remove any previous exact overrides for this habit/date
           const filtered = prev.filter(p => !(p.habitId === habitId && new Date(p.date).setHours(0,0,0,0) === date.setHours(0,0,0,0)));
+          
+          // 2. Determine Original Server State
+          const originalHabit = originalHabits.find(h => h.id === habitId);
+          const originalLog = originalHabit?.logs.find(l => {
+              const lDate = new Date(l.date); lDate.setHours(0,0,0,0);
+              const dDate = new Date(date); dDate.setHours(0,0,0,0);
+              return lDate.getTime() === dDate.getTime();
+          });
+          
+          const originalState = originalLog ? originalLog.isCompleted : false;
+          
+          // 3. Compare Original vs Target
+          // If the new target state identically matches the original server state, 
+          // we do NOT add it to the pending queue because no change is required.
+          if (originalState === isCompleted) {
+              setHasChanges(filtered.length > 0);
+              return filtered;
+          }
+          
+          // Otherwise, push it to the queue
+          setHasChanges(true);
           return [...filtered, { habitId, date: date.toISOString(), isCompleted }];
        });
-       setHasChanges(true); 
+       
     } else {
-       setHasChanges(true); // For anonymous users to see the save button conversion prompt
+       setHasChanges(true); // For anonymous users
     }
   };
 
