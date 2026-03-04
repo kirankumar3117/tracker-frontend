@@ -19,21 +19,21 @@ export function HabitLeaderboard({ habits, selectedMonth, selectedYear }: HabitL
   const dynamicHabits = habits.map(habit => {
     let activeDaysCount = 0;
     for (let i = 1; i <= daysInMonth; i++) {
-        const d = new Date(selectedYear, selectedMonth, i);
-        let isActive = true;
-        if (habit.frequency && !habit.frequency.includes(d.getDay())) isActive = false;
-        
-        const compareTime = d.getTime();
-        if (isActive && habit.duration === "1-week") {
-            const start = new Date(habit.createdAt); start.setHours(0,0,0,0);
-            const end = new Date(start); end.setDate(end.getDate() + 6);
-            if (compareTime < start.getTime() || compareTime > end.getTime()) isActive = false;
-        } else if (isActive && habit.duration === "custom" && habit.customStartDate && habit.customEndDate) {
-            const start = new Date(habit.customStartDate); start.setHours(0,0,0,0);
-            const end = new Date(habit.customEndDate); end.setHours(0,0,0,0);
-            if (compareTime < start.getTime() || compareTime > end.getTime()) isActive = false;
-        }
-        if (isActive) activeDaysCount++;
+      const d = new Date(selectedYear, selectedMonth, i);
+      let isActive = true;
+      if (habit.frequency && !habit.frequency.includes(d.getDay())) isActive = false;
+
+      const compareTime = d.getTime();
+      if (isActive && habit.duration === "1-week") {
+        const start = new Date(habit.createdAt); start.setHours(0, 0, 0, 0);
+        const end = new Date(start); end.setDate(end.getDate() + 6);
+        if (compareTime < start.getTime() || compareTime > end.getTime()) isActive = false;
+      } else if (isActive && habit.duration === "custom" && habit.customStartDate && habit.customEndDate) {
+        const start = new Date(habit.customStartDate); start.setHours(0, 0, 0, 0);
+        const end = new Date(habit.customEndDate); end.setHours(0, 0, 0, 0);
+        if (compareTime < start.getTime() || compareTime > end.getTime()) isActive = false;
+      }
+      if (isActive) activeDaysCount++;
     }
 
     const monthLogs = habit.logs.filter(l => {
@@ -66,7 +66,7 @@ export function HabitLeaderboard({ habits, selectedMonth, selectedYear }: HabitL
         </div>
         <div>
           <h3 className="text-lg font-bold text-foreground tracking-tight">Consistency Leaderboard</h3>
-          <p className="text-xs text-muted-foreground font-medium">Ranked by {daysInMonth}-day performance</p>
+          <p className="text-xs text-muted-foreground font-medium">Ranked by {daysInMonth}-day (Monthly) performance</p>
         </div>
       </div>
 
@@ -75,7 +75,7 @@ export function HabitLeaderboard({ habits, selectedMonth, selectedYear }: HabitL
           <p className="text-sm text-muted-foreground text-center py-4">No data to rank.</p>
         ) : (
           sortedHabits.map((habit, idx) => (
-            <motion.div 
+            <motion.div
               key={habit.id}
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
