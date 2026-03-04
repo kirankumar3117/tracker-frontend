@@ -34,7 +34,7 @@ export default function Dashboard() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="flex flex-col gap-8 pb-12"
+      className="flex flex-col gap-6 md:gap-8 pb-12 pt-14 md:pt-0"
     >
       <DashboardHeader
         todayPercentage={todayPercentage}

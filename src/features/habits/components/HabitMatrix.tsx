@@ -108,18 +108,26 @@ export function HabitMatrix({ habits, onToggleLog, loadingHabitId, selectedMonth
   };
 
   useEffect(() => {
-    if (scrollContainerRef.current) {
+    const doScroll = () => {
+      if (!scrollContainerRef.current) return;
+      const container = scrollContainerRef.current;
       if (isCurrentMonth && todayRef.current) {
-        const container = scrollContainerRef.current;
         const target = todayRef.current;
-        const scrollPos = target.offsetLeft - (container.clientWidth / 2) + (target.clientWidth / 2);
-        container.scrollTo({ left: scrollPos, behavior: 'smooth' });
+        // getBoundingClientRect gives viewport-relative positions.
+        // Adding container.scrollLeft converts to scroll-relative offset.
+        const containerRect = container.getBoundingClientRect();
+        const targetRect = target.getBoundingClientRect();
+        const relativeLeft = targetRect.left - containerRect.left + container.scrollLeft;
+        // Center today in the viewport
+        const scrollPos = relativeLeft - container.clientWidth / 2 + target.clientWidth / 2;
+        container.scrollTo({ left: Math.max(0, scrollPos), behavior: 'smooth' });
       } else {
-        scrollContainerRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+        container.scrollTo({ left: 0, behavior: 'smooth' });
       }
-      // initial check
       setTimeout(checkScroll, 100);
-    }
+    };
+    // rAF ensures layout is fully painted before we measure positions
+    requestAnimationFrame(doScroll);
   }, [habits.length, selectedMonth, selectedYear, isCurrentMonth]);
 
   const scrollBy = (amount: number) => {
@@ -254,8 +262,8 @@ export function HabitMatrix({ habits, onToggleLog, loadingHabitId, selectedMonth
                       <Edit2 className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover/row:opacity-100 transition-opacity shrink-0" />
 
                       <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wider ${habit.priority === 'High' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
-                          habit.priority === 'Medium' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' :
-                            'bg-blue-500/10 text-blue-500 border-blue-500/20'
+                        habit.priority === 'Medium' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' :
+                          'bg-blue-500/10 text-blue-500 border-blue-500/20'
                         }`}>
                         {habit.priority === 'High' ? 'P1' : habit.priority === 'Medium' ? 'P2' : 'P3'}
                       </span>

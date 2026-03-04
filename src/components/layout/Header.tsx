@@ -20,7 +20,7 @@ export function Header() {
 
   const [isConversionModalOpen, setIsConversionModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  
+
   const user = useAuthStore((state) => state.user);
 
   useEffect(() => {
@@ -50,7 +50,7 @@ export function Header() {
       <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-white/5 dark:border-white/10 shadow-sm px-4 sm:px-8 h-16 flex items-center justify-center">
         <div className="w-full max-w-7xl flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-18 h-8 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg shadow-primary/20">
+            <div className="w-16 h-8 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg shadow-primary/20 ml-12 md:ml-0">
               <span className="text-white font-bold text-sm tracking-tighter">Habit</span>
             </div>
             <h2 className="text-lg font-bold tracking-tight text-foreground hidden sm:block">
@@ -59,7 +59,7 @@ export function Header() {
           </div>
           <div className="flex items-center gap-3 sm:gap-4">
             {!user && (
-              <button 
+              <button
                 onClick={() => setIsConversionModalOpen(true)}
                 className="flex items-center gap-2 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 px-4 py-2 rounded-xl transition-all shadow-[0_0_15px_rgba(217,119,6,0.1)] font-semibold text-sm"
               >
@@ -69,9 +69,9 @@ export function Header() {
             )}
             <ThemeToggle />
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <Button 
+              <Button
                 onClick={handleNewHabitClick}
-                size="sm" 
+                size="sm"
                 className="rounded-xl shadow-[0_0_15px_rgba(217,119,6,0.15)] bg-primary hover:bg-primary/90 text-primary-foreground transition-all h-9 px-4 font-semibold border-none"
               >
                 <Plus className="w-4 h-4 sm:mr-2" />
@@ -80,9 +80,9 @@ export function Header() {
             </motion.div>
           </div>
         </div>
-        <ConversionModal 
-          isOpen={isConversionModalOpen} 
-          onClose={() => setIsConversionModalOpen(false)} 
+        <ConversionModal
+          isOpen={isConversionModalOpen}
+          onClose={() => setIsConversionModalOpen(false)}
           onLoginClick={() => {
             setIsConversionModalOpen(false);
             setTimeout(() => setIsAuthModalOpen(true), 300);
@@ -93,16 +93,16 @@ export function Header() {
           }}
         />
 
-        <AuthModal 
-          isOpen={isAuthModalOpen} 
-          onClose={() => setIsAuthModalOpen(false)} 
-          onSuccess={() => {}} 
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          onClose={() => setIsAuthModalOpen(false)}
+          onSuccess={() => { }}
         />
       </header>
 
-      <HabitModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
+      <HabitModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
         onRefresh={() => window.dispatchEvent(new Event('refresh-habits'))}
         editHabit={editHabit}
       />

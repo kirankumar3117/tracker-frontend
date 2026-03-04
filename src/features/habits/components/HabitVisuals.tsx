@@ -65,7 +65,7 @@ export function HabitVisuals({ habits }: HabitVisualsProps) {
   });
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 w-full">
       {/* Bar Chart: Daily Volume */}
       <div className="bg-card border border-border rounded-2xl p-5 flex flex-col h-[300px]">
         <div className="mb-4">

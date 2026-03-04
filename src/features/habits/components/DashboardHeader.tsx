@@ -17,10 +17,10 @@ export function DashboardHeader({ todayPercentage, hasChanges, onSave }: Dashboa
   return (
     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight text-foreground flex items-center gap-3">
+        <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground flex items-center gap-3">
           Dashboard
         </h1>
-        <p className="text-muted-foreground mt-2 font-medium flex items-center gap-2">
+        <p className="text-sm md:text-base text-muted-foreground mt-2 font-medium flex items-center gap-2 flex-wrap">
           Monitor consistencies and advanced spreadsheet analytics.
           {!user && <motion.span
             animate={{

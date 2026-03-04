@@ -3,9 +3,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutList, User, Settings, Palette, LogOut, LogIn } from "lucide-react";
+import { LayoutList, User, Settings, Palette, LogOut, LogIn, X, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import { AuthModal } from "@/components/auth/AuthModal";
 import {
@@ -23,47 +23,31 @@ const navItems = [
   { href: "/list", label: "Dashboard", icon: LayoutList },
 ];
 
-export function Sidebar() {
-  const pathname = usePathname();
-  const [isMounted, setIsMounted] = useState(false);
-  
-  const user = useAuthStore((state) => state.user);
-  const logout = useAuthStore((state) => state.logout);
-  
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  const handleLogout = () => {
-    // We dispatch this to give the Dashboard a chance to intercept and warn the user
-    // if they have unsaved matrix log changes.
-    window.dispatchEvent(new Event('request-logout'));
-  };
-
-  useEffect(() => {
-    const executeLogout = () => {
-      document.cookie = "tracker-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-      localStorage.removeItem("tracker-token");
-      logout();
-    };
-
-    window.addEventListener('execute-logout', executeLogout);
-    return () => window.removeEventListener('execute-logout', executeLogout);
-  }, []);
-
+// Shared inner markup — rendered directly (not as a nested component) to avoid
+// React unmounting on every render and swallowing click events.
+function NavContent({
+  pathname,
+  isMounted,
+  user,
+  onLinkClick,
+  onLoginClick,
+  onLogout,
+}: {
+  pathname: string;
+  isMounted: boolean;
+  user: { name: string; email: string } | null;
+  onLinkClick: () => void;
+  onLoginClick: () => void;
+  onLogout: () => void;
+}) {
   return (
-    <aside className="fixed inset-y-0 left-0 w-64 border-r border-border bg-background/80 backdrop-blur-xl flex flex-col py-6 px-4 z-50">
-      
-      {/* LOGO AREA - FIXED WITH ABSOLUTE POSITIONING */}
+    <>
+      {/* LOGO AREA */}
       <div className="relative flex items-center h-10 px-3 mb-10">
-        {/* The absolute positioning takes the tall logo out of the document flow so it won't stretch the sidebar */}
         <div className="absolute left-1 top-1/2 -translate-y-1/2 w-16 h-28 pointer-events-none">
           <Image src="/logo-dark.png" alt="D Tracker Logo" fill className="object-contain dark:hidden block ml-3" priority />
           <Image src="/logo-light.png" alt="D Tracker Logo" fill className="object-contain hidden dark:block" priority />
         </div>
-        {/* We add margin-left to push the text past the floating logo */}
         <span className="text-xl font-bold tracking-tight text-foreground ml-14">Tracker</span>
       </div>
 
@@ -80,6 +64,7 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               className="relative outline-none block"
+              onClick={onLinkClick}
             >
               <motion.div
                 whileHover={{ scale: 1.02 }}
@@ -92,8 +77,8 @@ export function Sidebar() {
                 )}
               >
                 {isActive && (
-                  <motion.div 
-                    layoutId="active-sidebar-nav" 
+                  <motion.div
+                    layoutId="active-sidebar-nav"
                     className="absolute inset-0 bg-secondary border border-border rounded-xl -z-10"
                     transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                   />
@@ -113,8 +98,8 @@ export function Sidebar() {
       <div className="mt-auto pt-4 flex flex-col gap-2 min-h-[72px]">
         {isMounted && (
           !user ? (
-            <button 
-              onClick={() => setIsAuthModalOpen(true)}
+            <button
+              onClick={onLoginClick}
               className="group relative flex items-center justify-center gap-2 w-full h-11 rounded-xl bg-secondary border border-border text-foreground font-medium hover:bg-secondary/80 transition-all overflow-hidden"
             >
               <LogIn className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
@@ -147,8 +132,8 @@ export function Sidebar() {
                   Theme
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="bg-border my-1" />
-                <DropdownMenuItem 
-                  onClick={handleLogout}
+                <DropdownMenuItem
+                  onClick={onLogout}
                   className="cursor-pointer gap-3 rounded-lg font-medium text-red-500 hover:text-red-600 hover:bg-red-500/10 focus:bg-red-500/10 focus:text-red-500 py-2.5 px-3 transition-colors outline-none"
                 >
                   <LogOut className="w-4 h-4" />
@@ -159,12 +144,114 @@ export function Sidebar() {
           )
         )}
       </div>
+    </>
+  );
+}
 
-      <AuthModal 
-        isOpen={isAuthModalOpen} 
-        onClose={() => setIsAuthModalOpen(false)} 
-        onSuccess={() => {}} 
+export function Sidebar() {
+  const pathname = usePathname();
+  const [isMounted, setIsMounted] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
+  const user = useAuthStore((state) => state.user);
+  const logout = useAuthStore((state) => state.logout);
+
+  useEffect(() => { setIsMounted(true); }, []);
+
+  // Close on route change
+  useEffect(() => { setIsMobileOpen(false); }, [pathname]);
+
+  // Lock body scroll when drawer is open
+  useEffect(() => {
+    document.body.style.overflow = isMobileOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [isMobileOpen]);
+
+  const handleLogout = () => {
+    window.dispatchEvent(new Event('request-logout'));
+    setIsMobileOpen(false);
+  };
+
+  useEffect(() => {
+    const executeLogout = () => {
+      document.cookie = "tracker-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      localStorage.removeItem("tracker-token");
+      logout();
+    };
+    window.addEventListener('execute-logout', executeLogout);
+    return () => window.removeEventListener('execute-logout', executeLogout);
+  }, []);
+
+  const sharedProps = {
+    pathname,
+    isMounted,
+    user,
+    onLinkClick: () => setIsMobileOpen(false),
+    onLoginClick: () => { setIsAuthModalOpen(true); setIsMobileOpen(false); },
+    onLogout: handleLogout,
+  };
+
+  return (
+    <>
+      {/* ── Hamburger — mobile only ── */}
+      <button
+        onClick={() => setIsMobileOpen(true)}
+        className="md:hidden fixed top-4 left-4 z-50 w-9 h-9 flex items-center justify-center rounded-xl bg-background/80 backdrop-blur-md border border-border shadow-md text-foreground"
+        aria-label="Open menu"
+      >
+        <Menu className="w-5 h-5" />
+      </button>
+
+      {/* ── Desktop sidebar — hidden on mobile ── */}
+      <aside className="hidden md:flex fixed inset-y-0 left-0 w-64 border-r border-border bg-background/80 backdrop-blur-xl flex-col py-6 px-4 z-50">
+        <NavContent {...sharedProps} />
+      </aside>
+
+      {/* ── Mobile overlay ── */}
+      <AnimatePresence>
+        {isMobileOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              key="sidebar-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setIsMobileOpen(false)}
+              className="md:hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm"
+            />
+
+            {/* Drawer */}
+            <motion.aside
+              key="sidebar-drawer"
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="md:hidden fixed inset-y-0 left-0 w-72 z-[70] bg-background border-r border-border flex flex-col py-6 px-4 shadow-2xl"
+            >
+              {/* Close button — rendered directly, NOT inside NavContent */}
+              <button
+                onClick={() => setIsMobileOpen(false)}
+                className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-muted text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                aria-label="Close menu"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              <NavContent {...sharedProps} />
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onSuccess={() => { }}
       />
-    </aside>
+    </>
   );
 }
