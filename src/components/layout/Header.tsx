@@ -11,6 +11,8 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { ConversionModal } from "@/components/auth/ConversionModal";
 import { AuthModal } from "@/components/auth/AuthModal";
 
+import { useAuthStore } from "@/store/useAuthStore";
+
 export function Header() {
   const pathname = usePathname();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -18,19 +20,8 @@ export function Header() {
 
   const [isConversionModalOpen, setIsConversionModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [user, setUser] = useState<{name: string, email: string} | null>(null);
-
-  useEffect(() => {
-    // Check if user is logged in
-    const stored = localStorage.getItem("tracker-user");
-    if (stored) {
-      try {
-        setTimeout(() => setUser(JSON.parse(stored)), 0);
-      } catch (e) {
-        // ignore
-      }
-    }
-  }, []);
+  
+  const user = useAuthStore((state) => state.user);
 
   useEffect(() => {
     const handleOpenEdit = (e: Event) => {
@@ -105,10 +96,7 @@ export function Header() {
         <AuthModal 
           isOpen={isAuthModalOpen} 
           onClose={() => setIsAuthModalOpen(false)} 
-          onSuccess={(u) => {
-            setUser(u);
-            window.location.reload(); // Quick refresh to update the sidebar state
-          }} 
+          onSuccess={() => {}} 
         />
       </header>
 

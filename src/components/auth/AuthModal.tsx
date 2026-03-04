@@ -13,6 +13,8 @@ interface AuthModalProps {
   onSuccess: (user: { name: string; email: string }) => void;
 }
 
+import { useAuthStore } from "@/store/useAuthStore";
+
 export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -22,6 +24,8 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
+
+  const login = useAuthStore((state) => state.login);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,10 +72,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
          localStorage.setItem("tracker-token", data.token);
       }
       
-      localStorage.setItem("tracker-user", JSON.stringify(user));
-      
-      // Dispatch event for other components (like Dashboard Matrix) to trigger a fresh data payload fetch
-      window.dispatchEvent(new Event('auth-success'));
+      login(user);
       
       onSuccess(user);
       onClose();

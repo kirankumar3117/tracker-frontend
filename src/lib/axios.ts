@@ -1,4 +1,5 @@
 import axios, { AxiosError } from 'axios';
+import { useAuthStore } from '@/store/useAuthStore';
 
 /**
  * Validates whether the current environment is a browser.
@@ -80,7 +81,7 @@ apiClient.interceptors.response.use(
           
           if (isBrowser) {
             localStorage.removeItem('tracker-token');
-            localStorage.removeItem('tracker-user');
+            useAuthStore.getState().logout();
             localStorage.removeItem('tracker-last-login-state');
             
             // Dispatch a custom event to force the app to reset back to "Mock Mode" 

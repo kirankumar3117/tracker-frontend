@@ -17,6 +17,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+import { useAuthStore } from "@/store/useAuthStore";
+
 const navItems = [
   { href: "/list", label: "Dashboard", icon: LayoutList },
 ];
@@ -24,20 +26,14 @@ const navItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const [isMounted, setIsMounted] = useState(false);
-  const [user, setUser] = useState<{name: string, email: string} | null>(null);
+  
+  const user = useAuthStore((state) => state.user);
+  const logout = useAuthStore((state) => state.logout);
+  
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
-    const stored = localStorage.getItem("tracker-user");
-    if (stored) {
-      try {
-        // Defer state update slightly to prevent synchronous cascading
-        setTimeout(() => setUser(JSON.parse(stored)), 0);
-      } catch (e) {
-        console.error("Failed to parse user", e);
-      }
-    }
   }, []);
 
   const handleLogout = () => {
@@ -50,8 +46,7 @@ export function Sidebar() {
     const executeLogout = () => {
       document.cookie = "tracker-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
       localStorage.removeItem("tracker-token");
-      localStorage.removeItem("tracker-user");
-      setUser(null);
+      logout();
     };
 
     window.addEventListener('execute-logout', executeLogout);
@@ -168,7 +163,7 @@ export function Sidebar() {
       <AuthModal 
         isOpen={isAuthModalOpen} 
         onClose={() => setIsAuthModalOpen(false)} 
-        onSuccess={(u) => setUser(u)} 
+        onSuccess={() => {}} 
       />
     </aside>
   );
