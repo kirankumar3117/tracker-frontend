@@ -50,10 +50,10 @@ export function useDashboard() {
         });
         setOriginalHabits(freshHabits);
         setHabits(mergedHabits);
+        setLoading(false);
         localStorage.setItem("tracker-last-login-state", "logged-in");
       } catch (e) {
         console.error("Failed fetching habits in Dashboard", e);
-      } finally {
         setLoading(false);
       }
     } else {
