@@ -1,6 +1,6 @@
 import { Habit, HabitLog } from "@/types/habit";
 
-const API_BASE_URL = "http://localhost:8000/api/v1";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL
 
 const getAuthHeaders = () => {
   const token = typeof window !== "undefined" ? localStorage.getItem("tracker-token") : null;
