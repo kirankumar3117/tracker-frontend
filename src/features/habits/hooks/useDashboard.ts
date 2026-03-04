@@ -259,14 +259,36 @@ export function useDashboard() {
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
   let todayCompleted = 0;
+  let todayActiveCount = 0;
+
   habits.forEach(h => {
-    const log = h.logs.find(l => {
-      const lDate = new Date(l.date); lDate.setHours(0, 0, 0, 0);
-      return lDate.getTime() === todayStart.getTime();
-    });
-    if (log?.isCompleted) todayCompleted++;
+    // Check if habit is active today
+    let isActive = true;
+    if (h.frequency && !h.frequency.includes(todayStart.getDay())) {
+      isActive = false;
+    }
+    const compareTime = todayStart.getTime();
+    if (isActive && h.duration === "1-week") {
+      const start = new Date(h.createdAt); start.setHours(0, 0, 0, 0);
+      const end = new Date(start); end.setDate(end.getDate() + 6);
+      if (compareTime < start.getTime() || compareTime > end.getTime()) isActive = false;
+    } else if (isActive && h.duration === "custom" && h.customStartDate && h.customEndDate) {
+      const start = new Date(h.customStartDate); start.setHours(0, 0, 0, 0);
+      const end = new Date(h.customEndDate); end.setHours(0, 0, 0, 0);
+      if (compareTime < start.getTime() || compareTime > end.getTime()) isActive = false;
+    }
+
+    if (isActive) {
+      todayActiveCount++;
+      const log = h.logs.find(l => {
+        const lDate = new Date(l.date); lDate.setHours(0, 0, 0, 0);
+        return lDate.getTime() === todayStart.getTime();
+      });
+      if (log?.isCompleted) todayCompleted++;
+    }
   });
-  const todayPercentage = habits.length > 0 ? Math.round((todayCompleted / habits.length) * 100) : 0;
+
+  const todayPercentage = todayActiveCount > 0 ? Math.round((todayCompleted / todayActiveCount) * 100) : 0;
 
   return {
     habits,

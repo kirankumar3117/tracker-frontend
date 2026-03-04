@@ -44,3 +44,14 @@ export const loginUser = async (payload: LoginPayload): Promise<AuthResponse> =>
   const response = await apiClient.post<unknown, AuthResponse>("/auth/login", payload);
   return response;
 };
+
+/**
+ * Authenticates a user using Google OAuth ID token.
+ * 
+ * @param payload - The Google ID credential token
+ * @returns The structured user object and JWT token
+ */
+export const googleLogin = async (payload: { token: string }): Promise<AuthResponse> => {
+  const response = await apiClient.post<unknown, AuthResponse>("/auth/google", payload);
+  return response;
+};
