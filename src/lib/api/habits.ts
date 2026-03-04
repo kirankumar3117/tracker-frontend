@@ -39,7 +39,7 @@ export const createHabit = async (habitData: Partial<Habit>): Promise<Habit> => 
     });
 
     const data = await response.json();
-    if (!response.ok || !data.success) throw new Error(data.message || "Failed to create habit");
+    if (!response.ok) throw new Error(data.message || "Failed to create habit");
 
     return data.data;
   } catch (error) {
@@ -57,7 +57,7 @@ export const updateHabit = async (id: string, habitData: Partial<Habit>): Promis
     });
 
     const data = await response.json();
-    if (!response.ok || !data.success) throw new Error(data.message || "Failed to update habit");
+    if (!response.ok) throw new Error(data.message || "Failed to update habit");
 
     return data.data;
   } catch (error) {
@@ -74,7 +74,7 @@ export const deleteHabit = async (id: string): Promise<boolean> => {
     });
 
     const data = await response.json();
-    if (!response.ok || !data.success) throw new Error(data.message || "Failed to delete habit");
+    if (!response.ok) throw new Error(data.message || "Failed to delete habit");
 
     return true;
   } catch (error) {
@@ -92,7 +92,7 @@ export const toggleHabitLog = async (habitId: string, date: string, isCompleted:
     });
 
     const data = await response.json();
-    if (!response.ok || !data.success) throw new Error(data.message || "Failed to toggle habit log");
+    if (!response.ok) throw new Error(data.message || "Failed to toggle habit log");
 
     return data.data;
   } catch (error) {
@@ -110,7 +110,7 @@ export const bulkUpdateHabitLogs = async (logs: Array<{ habitId: string; date: s
     });
 
     const data = await response.json();
-    if (!response.ok || !data.success) throw new Error(data.message || "Failed to bulk update habit logs");
+    if (!response.ok) throw new Error(data.message || "Failed to bulk update habit logs");
 
     return true;
   } catch (error) {

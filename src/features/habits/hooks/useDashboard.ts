@@ -27,7 +27,9 @@ export function useDashboard() {
   // CENTRALIZED FETCHING LOGIC
   // --------------------------------------------------------------------------
   const fetchHabits = useCallback(async (isLoggedIn: boolean) => {
+    console.log("fetchHabits called", isLoggedIn);
     if (isLoggedIn) {
+      console.log("user signed in", isLoggedIn);
       setLoading(true);
       try {
         const freshHabits = await getHabits(selectedMonth + 1, selectedYear);
