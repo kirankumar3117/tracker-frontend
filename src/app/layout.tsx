@@ -6,8 +6,8 @@ import Providers from "@/components/Providers";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Daily Tracker | Minimalist & Apple-Style",
-  description: "A breathtaking Apple-style minimalist Habit & Task Tracker.",
+  title: "Daily Tracker | Habit Tracker",
+  description: "A breathtaking minimalist Habit & Task Tracker.",
 };
 
 export default function RootLayout({
