@@ -34,6 +34,56 @@ If users want to sync their data across devices, a beautiful Framer Motion-power
 
 ---
 
+## 🚀 Version 1 — Feature Changelog
+
+> **Shipped:** March 2026 · Commit `dd59b6a`
+
+### 🔐 Authentication
+| Feature | Details |
+|---|---|
+| **Email / Password Auth** | Full login & registration flow with field validation and error display |
+| **Google OAuth (SSO)** | One-click sign-in via `@react-oauth/google` connected to `/auth/google` backend |
+| **Zustand Auth Store** | Centralized reactive auth state using Zustand `persist` middleware — replaces scattered `localStorage` and `window` event hacks |
+| **Persistent Sessions** | Token stored in HTTP-only cookie + `localStorage` for immediate client-side usage |
+| **401 Interceptor** | Axios response interceptor auto-clears session and calls `logout()` on token expiry |
+| **Google-account Error Handling** | Backend `400` error for password-login on a Google account is caught and displayed with premium red toast styling |
+
+---
+
+### 📅 Habit Matrix
+| Feature | Details |
+|---|---|
+| **Frequency-aware rendering** | Habits scheduled only on certain days of the week render inactive (greyed-out) cells on off-days |
+| **Duration boundaries** | Supports `all-time`, `1-week`, and `custom date range` habit durations |
+| **Future Date Protection** | Clicking a future date is blocked and triggers a humorous Framer Motion "Time Traveler" toast |
+| **Optimistic UI updates** | Log toggles apply instantly to local state with `pendingLogs` diff tracking before bulk API save |
+| **Month/Year navigator** | Dropdown controls to switch between any month/year with auto-scroll to today |
+
+---
+
+### 📊 Dashboard & Analytics
+| Feature | Details |
+|---|---|
+| **Accurate Today % Progress** | Dashboard completion ring now excludes habits inactive today (respects frequency + duration) |
+| **Volume Overview Chart** | Bar chart showing daily completed habit count for the past 14 days |
+| **Consistency Trend Chart** | Line chart showing daily completion rate (%) for the past 14 days |
+| **Dynamic Date Range Labels** | Chart headers show live date range (e.g., "Showing past 14 days (Feb 18 – Mar 04)") |
+| **Consistency Leaderboard** | Habits ranked by monthly performance, dynamically calculated per active days |
+| **Mock Data Mode indicator** | "Mock Data Mode" badge in the header only shown when user is not logged in |
+
+---
+
+### 🏗️ Architecture & DX
+| Feature | Details |
+|---|---|
+| **Feature-based folder structure** | Components split into `features/habits/`, `components/layout/`, `store/`, `lib/api/` |
+| **Centralized Axios instance** | Single API client with request auth-header injection and structured error unwrapping |
+| **Bulk Log Save** | All pending habit log changes batched into a single `POST /logs/bulk` call on save |
+| **Zustand store** | `useAuthStore` provides `login` / `logout` actions consumed across Header, Sidebar, Modal, and Dashboard hooks |
+| **`@react-oauth/google` integration** | `GoogleOAuthProvider` wraps the app at the root `Providers.tsx` level |
+
+---
+
 ## 🏗️ Architecture & Ecosystem
 
 This repository (`tracker-frontend`) represents the client-side Next.js Application. 
