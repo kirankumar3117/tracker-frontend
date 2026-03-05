@@ -7,12 +7,29 @@ import { recalculateAllMetrics, getMockHabits } from "@/lib/mockData";
 
 import { useAuthStore } from "@/store/useAuthStore";
 
+// Peek at localStorage to detect if the user was previously logged in,
+// so we don't flash mock data before Zustand's persist middleware hydrates.
+function getInitialLoadingState(): boolean {
+  if (typeof window === "undefined") return true;
+  try {
+    const persisted = localStorage.getItem("tracker-user");
+    if (persisted) {
+      const parsed = JSON.parse(persisted);
+      if (parsed?.state?.user) return true; // expect a real fetch
+    }
+  } catch {
+    // ignore
+  }
+  return true; // default to loading until we know for sure
+}
+
 export function useDashboard() {
   const user = useAuthStore((state) => state.user);
-  
+  const isHydrated = useRef(false);
+
   const [habits, setHabits] = useState<Habit[]>([]);
   const [originalHabits, setOriginalHabits] = useState<Habit[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(getInitialLoadingState);
   const [hasChanges, setHasChanges] = useState(false);
   const [pendingLogs, setPendingLogs] = useState<PendingLog[]>([]);
 
@@ -101,8 +118,21 @@ export function useDashboard() {
     }
   }, []);
 
-  // Sync fetch with user state changes
+  // Sync fetch with user state changes.
+  // On the very first render Zustand hasn't hydrated yet (user === null even
+  // when the visitor IS logged in). We skip that first render and wait for
+  // the real hydrated value before deciding which path to take.
   useEffect(() => {
+    if (!isHydrated.current) {
+      isHydrated.current = true;
+      // If user is already set on first render (SSR / fast hydration), proceed.
+      // Otherwise wait for the next effect call triggered by user changing.
+      if (user !== null) {
+        fetchHabits(true);
+      }
+      // If user is still null here, the effect will re-run once Zustand hydrates.
+      return;
+    }
     fetchHabits(!!user);
   }, [user, fetchHabits]);
 
