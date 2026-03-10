@@ -21,7 +21,11 @@ export const getHabits = async (month?: number, year?: number): Promise<Habit[]>
     });
 
     const data = await response.json();
-    if (!response.ok || !data.success) throw new Error(data.message || "Failed to fetch habits");
+    if (!response.ok || !data.success) {
+      const error: any = new Error(data.message || "Failed to fetch habits");
+      error.status = response.status;
+      throw error;
+    }
 
     return data.data;
   } catch (error) {

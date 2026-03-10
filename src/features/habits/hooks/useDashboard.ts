@@ -104,7 +104,14 @@ export function useDashboard() {
           setHabits(mergedHabits);
           setLoading(false);
           localStorage.setItem("tracker-last-login-state", "logged-in");
-        } catch (e) {
+        } catch (e: any) {
+          if (e.status === 401) {
+            setPendingLogs([]);
+            setHasChanges(false);
+            setOriginalHabits([]);
+            setHabits([]);
+            window.dispatchEvent(new Event("execute-logout"));
+          }
           console.error("Failed fetching habits in Dashboard", e);
           setLoading(false);
         }
