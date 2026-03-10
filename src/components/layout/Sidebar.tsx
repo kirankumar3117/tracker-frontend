@@ -119,19 +119,19 @@ function NavContent({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" sideOffset={12} className="w-60 rounded-xl bg-card border-border shadow-2xl p-2">
                   <DropdownMenuLabel className="font-semibold text-[10px] uppercase tracking-wider text-muted-foreground mb-1 px-2">Account</DropdownMenuLabel>
-                  <DropdownMenuSeparator className="bg-border my-1" />
+                  {/* <DropdownMenuSeparator className="bg-border my-1" />
                   <DropdownMenuItem className="cursor-pointer gap-3 rounded-lg font-medium text-foreground hover:bg-muted focus:bg-muted py-2.5 px-3 transition-colors outline-none">
                     <User className="w-4 h-4 text-muted-foreground" />
                     Profile
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="cursor-pointer gap-3 rounded-lg font-medium text-foreground hover:bg-muted focus:bg-muted py-2.5 px-3 transition-colors outline-none">
+                  </DropdownMenuItem> */}
+                  {/* <DropdownMenuItem className="cursor-pointer gap-3 rounded-lg font-medium text-foreground hover:bg-muted focus:bg-muted py-2.5 px-3 transition-colors outline-none">
                     <Settings className="w-4 h-4 text-muted-foreground" />
                     Preferences
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="cursor-pointer gap-3 rounded-lg font-medium text-foreground hover:bg-muted focus:bg-muted py-2.5 px-3 transition-colors outline-none">
+                  </DropdownMenuItem> */}
+                  {/* <DropdownMenuItem className="cursor-pointer gap-3 rounded-lg font-medium text-foreground hover:bg-muted focus:bg-muted py-2.5 px-3 transition-colors outline-none">
                     <Palette className="w-4 h-4 text-muted-foreground" />
                     Theme
-                  </DropdownMenuItem>
+                  </DropdownMenuItem> */}
                   <DropdownMenuSeparator className="bg-border my-1" />
                   <DropdownMenuItem
                     onClick={onLogout}
