@@ -28,7 +28,7 @@ export function HabitModal({ isOpen, onClose, onRefresh, editHabit }: { isOpen: 
         setDuration(editHabit.duration);
         setFrequencyMode(editHabit.frequency && editHabit.frequency.length < 7 ? "specific" : "everyday");
         setFrequency(editHabit.frequency || []);
-        
+
         if (editHabit.duration === "custom") {
           setCustomStartDate(editHabit.customStartDate ? editHabit.customStartDate.split('T')[0] : "");
           setCustomEndDate(editHabit.customEndDate ? editHabit.customEndDate.split('T')[0] : "");
@@ -69,14 +69,14 @@ export function HabitModal({ isOpen, onClose, onRefresh, editHabit }: { isOpen: 
     if (frequencyMode === "specific" && frequency.length === 0) return;
 
     const finalFrequency = frequencyMode === "everyday" ? [0, 1, 2, 3, 4, 5, 6] : frequency;
-    
+
     // The backend expects full ISO strings, but the HTML input only provides "YYYY-MM-DD"
     // We parse it and append the current time safely to make it a valid ISO string payload
     let finalStartDate = customStartDate;
     let finalEndDate = customEndDate;
     if (duration === "custom") {
-       finalStartDate = new Date(customStartDate).toISOString();
-       finalEndDate = new Date(customEndDate).toISOString();
+      finalStartDate = new Date(customStartDate).toISOString();
+      finalEndDate = new Date(customEndDate).toISOString();
     }
 
     setLoading(true);
@@ -95,12 +95,8 @@ export function HabitModal({ isOpen, onClose, onRefresh, editHabit }: { isOpen: 
 
   const handleDelete = () => {
     if (!editHabit) return;
-    setLoading(true);
-    setTimeout(() => {
-      window.dispatchEvent(new CustomEvent('delete-habit', { detail: { id: editHabit.id } }));
-      onClose();
-      setLoading(false);
-    }, 400);
+    window.dispatchEvent(new CustomEvent('delete-habit', { detail: { id: editHabit.id } }));
+    onClose();
   };
 
   return (
@@ -116,7 +112,7 @@ export function HabitModal({ isOpen, onClose, onRefresh, editHabit }: { isOpen: 
                 className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md"
               />
             </DialogOverlay>
-            <DialogContent 
+            <DialogContent
               className="fixed left-[50%] top-[50%] z-50 w-full max-w-lg translate-x-[-50%] translate-y-[-50%] border-0 bg-transparent p-0 shadow-none sm:max-w-[400px]"
               showCloseButton={false}
             >
@@ -135,7 +131,7 @@ export function HabitModal({ isOpen, onClose, onRefresh, editHabit }: { isOpen: 
                     {editHabit ? "Refine your daily routine details." : "What daily action builds your identity?"}
                   </p>
                 </DialogHeader>
-                
+
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="space-y-4">
                     <Input
@@ -145,26 +141,26 @@ export function HabitModal({ isOpen, onClose, onRefresh, editHabit }: { isOpen: 
                       onChange={(e) => setTitle(e.target.value)}
                       autoFocus
                     />
-                    
+
                     <div className="space-y-3 pt-2">
                       <div className="flex items-center justify-between">
-                         <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider ml-1">Frequency</label>
-                         <Select value={frequencyMode} onValueChange={(val: any) => setFrequencyMode(val)}>
-                           <SelectTrigger className="w-[160px] border-white/10 dark:border-white/5 bg-background shadow-none font-medium rounded-xl h-9 text-xs">
-                             <SelectValue placeholder="Frequency" />
-                           </SelectTrigger>
-                           <SelectContent className="rounded-xl border-white/10">
-                             <SelectItem value="everyday" className="font-medium rounded-lg text-xs">Every Day</SelectItem>
-                             <SelectItem value="specific" className="font-medium rounded-lg text-xs">Specific Days</SelectItem>
-                           </SelectContent>
-                         </Select>
+                        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider ml-1">Frequency</label>
+                        <Select value={frequencyMode} onValueChange={(val: any) => setFrequencyMode(val)}>
+                          <SelectTrigger className="w-[160px] border-white/10 dark:border-white/5 bg-background shadow-none font-medium rounded-xl h-9 text-xs">
+                            <SelectValue placeholder="Frequency" />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl border-white/10">
+                            <SelectItem value="everyday" className="font-medium rounded-lg text-xs">Every Day</SelectItem>
+                            <SelectItem value="specific" className="font-medium rounded-lg text-xs">Specific Days</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
 
                       <AnimatePresence>
                         {frequencyMode === "specific" && (
-                          <motion.div 
-                            initial={{ opacity: 0, height: 0 }} 
-                            animate={{ opacity: 1, height: 'auto' }} 
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
                             exit={{ opacity: 0, height: 0 }}
                             className="flex items-center justify-between gap-2 pt-2 overflow-hidden"
                           >
@@ -173,11 +169,10 @@ export function HabitModal({ isOpen, onClose, onRefresh, editHabit }: { isOpen: 
                                 key={`${day.label}-${day.value}`}
                                 type="button"
                                 onClick={() => toggleDay(day.value)}
-                                className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
-                                  frequency.includes(day.value) 
-                                    ? 'bg-primary text-primary-foreground shadow-[0_0_15px_rgba(217,119,6,0.3)]' 
+                                className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all ${frequency.includes(day.value)
+                                    ? 'bg-primary text-primary-foreground shadow-[0_0_15px_rgba(217,119,6,0.3)]'
                                     : 'bg-muted/50 text-muted-foreground hover:bg-muted border border-transparent hover:border-border'
-                                }`}
+                                  }`}
                               >
                                 {day.label}
                               </button>
@@ -218,9 +213,9 @@ export function HabitModal({ isOpen, onClose, onRefresh, editHabit }: { isOpen: 
                     </div>
                     <AnimatePresence>
                       {duration === "custom" && (
-                        <motion.div 
-                          initial={{ opacity: 0, height: 0 }} 
-                          animate={{ opacity: 1, height: 'auto' }} 
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
                           exit={{ opacity: 0, height: 0 }}
                           className="flex items-center gap-4 pt-2 overflow-hidden"
                         >
@@ -264,7 +259,7 @@ export function HabitModal({ isOpen, onClose, onRefresh, editHabit }: { isOpen: 
                     ) : (
                       <div className="flex-1" />
                     )}
-                    
+
                     <div className="flex items-center gap-3">
                       <Button
                         type="button"
