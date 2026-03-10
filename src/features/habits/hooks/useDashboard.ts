@@ -20,7 +20,7 @@ function getInitialLoadingState(): boolean {
   } catch {
     // ignore
   }
-  return true; // default to loading until we know for sure
+  return false; // no stored user – skip loading state for logged-out visitors
 }
 
 export function useDashboard() {
@@ -32,6 +32,7 @@ export function useDashboard() {
   const [loading, setLoading] = useState<boolean>(getInitialLoadingState);
   const [hasChanges, setHasChanges] = useState(false);
   const [pendingLogs, setPendingLogs] = useState<PendingLog[]>([]);
+  const todayPercentageRef = useRef(0);
 
   const pendingLogsRef = useRef(pendingLogs);
   useEffect(() => { pendingLogsRef.current = pendingLogs; }, [pendingLogs]);
@@ -39,6 +40,14 @@ export function useDashboard() {
   const today = new Date();
   const [selectedMonth, setSelectedMonth] = useState<number>(today.getMonth());
   const [selectedYear, setSelectedYear] = useState<number>(today.getFullYear());
+
+  // Populate mock data on mount so there's content behind the blur overlay.
+  // Done in useEffect to avoid SSR hydration mismatch (getMockHabits uses Date).
+  useEffect(() => {
+    if (habits.length === 0) {
+      setHabits(getMockHabits(true));
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // --------------------------------------------------------------------------
   // CENTRALIZED FETCHING LOGIC
@@ -241,6 +250,7 @@ export function useDashboard() {
       if (pendingLogs.length > 0) {
         try {
           await bulkUpdateHabitLogs(pendingLogs);
+          setOriginalHabits(habits);  // sync baseline so future toggles compare against post-save state
           setHasChanges(false);
           setPendingLogs([]);
         } catch { console.error("Failed to bulk save logs"); }
@@ -267,18 +277,24 @@ export function useDashboard() {
     }));
 
     if (user && !habitId.startsWith('mock-')) {
+      const dateNorm = new Date(date);
+      dateNorm.setHours(0, 0, 0, 0);
+      const dateTime = dateNorm.getTime();
+
       setPendingLogs(prev => {
-        const filtered = prev.filter(p => !(p.habitId === habitId && new Date(p.date).setHours(0, 0, 0, 0) === date.setHours(0, 0, 0, 0)));
+        const filtered = prev.filter(p => {
+          const pDate = new Date(p.date); pDate.setHours(0, 0, 0, 0);
+          return !(p.habitId === habitId && pDate.getTime() === dateTime);
+        });
         const originalHabit = originalHabits.find(h => h.id === habitId);
         const originalLog = originalHabit?.logs.find(l => {
           const lDate = new Date(l.date); lDate.setHours(0, 0, 0, 0);
-          const dDate = new Date(date); dDate.setHours(0, 0, 0, 0);
-          return lDate.getTime() === dDate.getTime();
+          return lDate.getTime() === dateTime;
         });
         const originalState = originalLog ? originalLog.isCompleted : false;
         if (originalState === isCompleted) { setHasChanges(filtered.length > 0); return filtered; }
         setHasChanges(true);
-        return [...filtered, { habitId, date: date.toISOString(), isCompleted }];
+        return [...filtered, { habitId, date: dateNorm.toISOString(), isCompleted }];
       });
     } else {
       setHasChanges(true);
@@ -290,37 +306,44 @@ export function useDashboard() {
   // --------------------------------------------------------------------------
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
-  let todayCompleted = 0;
-  let todayActiveCount = 0;
+  const isViewingCurrentMonth = selectedMonth === todayStart.getMonth() && selectedYear === todayStart.getFullYear();
 
-  habits.forEach(h => {
-    // Check if habit is active today
-    let isActive = true;
-    if (h.frequency && !h.frequency.includes(todayStart.getDay())) {
-      isActive = false;
-    }
-    const compareTime = todayStart.getTime();
-    if (isActive && h.duration === "1-week") {
-      const start = new Date(h.createdAt); start.setHours(0, 0, 0, 0);
-      const end = new Date(start); end.setDate(end.getDate() + 6);
-      if (compareTime < start.getTime() || compareTime > end.getTime()) isActive = false;
-    } else if (isActive && h.duration === "custom" && h.customStartDate && h.customEndDate) {
-      const start = new Date(h.customStartDate); start.setHours(0, 0, 0, 0);
-      const end = new Date(h.customEndDate); end.setHours(0, 0, 0, 0);
-      if (compareTime < start.getTime() || compareTime > end.getTime()) isActive = false;
-    }
+  // Only recalculate today's progress when viewing the current month,
+  // otherwise return the last known value so it stays stable.
+  if (isViewingCurrentMonth) {
+    let todayCompleted = 0;
+    let todayActiveCount = 0;
 
-    if (isActive) {
-      todayActiveCount++;
-      const log = h.logs.find(l => {
-        const lDate = new Date(l.date); lDate.setHours(0, 0, 0, 0);
-        return lDate.getTime() === todayStart.getTime();
-      });
-      if (log?.isCompleted) todayCompleted++;
-    }
-  });
+    habits.forEach(h => {
+      let isActive = true;
+      if (h.frequency && !h.frequency.includes(todayStart.getDay())) {
+        isActive = false;
+      }
+      const compareTime = todayStart.getTime();
+      if (isActive && h.duration === "1-week") {
+        const start = new Date(h.createdAt); start.setHours(0, 0, 0, 0);
+        const end = new Date(start); end.setDate(end.getDate() + 6);
+        if (compareTime < start.getTime() || compareTime > end.getTime()) isActive = false;
+      } else if (isActive && h.duration === "custom" && h.customStartDate && h.customEndDate) {
+        const start = new Date(h.customStartDate); start.setHours(0, 0, 0, 0);
+        const end = new Date(h.customEndDate); end.setHours(0, 0, 0, 0);
+        if (compareTime < start.getTime() || compareTime > end.getTime()) isActive = false;
+      }
 
-  const todayPercentage = todayActiveCount > 0 ? Math.round((todayCompleted / todayActiveCount) * 100) : 0;
+      if (isActive) {
+        todayActiveCount++;
+        const log = h.logs.find(l => {
+          const lDate = new Date(l.date); lDate.setHours(0, 0, 0, 0);
+          return lDate.getTime() === todayStart.getTime();
+        });
+        if (log?.isCompleted) todayCompleted++;
+      }
+    });
+
+    todayPercentageRef.current = todayActiveCount > 0 ? Math.round((todayCompleted / todayActiveCount) * 100) : 0;
+  }
+
+  const todayPercentage = todayPercentageRef.current;
 
   return {
     habits,

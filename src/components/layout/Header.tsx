@@ -101,6 +101,7 @@ export function Header() {
       </header>
 
       <HabitModal
+        key={editHabit?.id ?? 'new'}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onRefresh={() => window.dispatchEvent(new Event('refresh-habits'))}

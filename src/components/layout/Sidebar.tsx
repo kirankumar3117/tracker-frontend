@@ -106,41 +106,51 @@ function NavContent({
               <span>Log in to Sync</span>
             </button>
           ) : (
-            <DropdownMenu>
-              <DropdownMenuTrigger className="flex items-center gap-3 text-sm font-medium text-foreground hover:bg-muted/50 border border-transparent hover:border-border w-full p-2.5 rounded-xl transition-all outline-none cursor-pointer">
-                <div className="w-8 h-8 rounded-full bg-secondary border border-border flex items-center justify-center shrink-0 overflow-hidden text-primary">
-                  <span className="font-bold text-xs uppercase">{user.name.charAt(0)}</span>
-                </div>
-                <div className="flex flex-col flex-1 items-start min-w-0">
-                  <span className="truncate w-full text-left font-medium text-foreground">{user.name}</span>
-                  <span className="truncate w-full text-left text-[10px] text-muted-foreground">{user.email}</span>
-                </div>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" sideOffset={12} className="w-60 rounded-xl bg-card border-border shadow-2xl p-2">
-                <DropdownMenuLabel className="font-semibold text-[10px] uppercase tracking-wider text-muted-foreground mb-1 px-2">Account</DropdownMenuLabel>
-                <DropdownMenuSeparator className="bg-border my-1" />
-                <DropdownMenuItem className="cursor-pointer gap-3 rounded-lg font-medium text-foreground hover:bg-muted focus:bg-muted py-2.5 px-3 transition-colors outline-none">
-                  <User className="w-4 h-4 text-muted-foreground" />
-                  Profile
-                </DropdownMenuItem>
-                <DropdownMenuItem className="cursor-pointer gap-3 rounded-lg font-medium text-foreground hover:bg-muted focus:bg-muted py-2.5 px-3 transition-colors outline-none">
-                  <Settings className="w-4 h-4 text-muted-foreground" />
-                  Preferences
-                </DropdownMenuItem>
-                <DropdownMenuItem className="cursor-pointer gap-3 rounded-lg font-medium text-foreground hover:bg-muted focus:bg-muted py-2.5 px-3 transition-colors outline-none">
-                  <Palette className="w-4 h-4 text-muted-foreground" />
-                  Theme
-                </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-border my-1" />
-                <DropdownMenuItem
-                  onClick={onLogout}
-                  className="cursor-pointer gap-3 rounded-lg font-medium text-red-500 hover:text-red-600 hover:bg-red-500/10 focus:bg-red-500/10 focus:text-red-500 py-2.5 px-3 transition-colors outline-none"
-                >
-                  <LogOut className="w-4 h-4" />
-                  Log Out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <>
+              <DropdownMenu>
+                <DropdownMenuTrigger className="flex items-center gap-3 text-sm font-medium text-foreground hover:bg-muted/50 border border-transparent hover:border-border w-full p-2.5 rounded-xl transition-all outline-none cursor-pointer">
+                  <div className="w-8 h-8 rounded-full bg-secondary border border-border flex items-center justify-center shrink-0 overflow-hidden text-primary">
+                    <span className="font-bold text-xs uppercase">{user.name.charAt(0)}</span>
+                  </div>
+                  <div className="flex flex-col flex-1 items-start min-w-0">
+                    <span className="truncate w-full text-left font-medium text-foreground">{user.name}</span>
+                    <span className="truncate w-full text-left text-[10px] text-muted-foreground">{user.email}</span>
+                  </div>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" sideOffset={12} className="w-60 rounded-xl bg-card border-border shadow-2xl p-2">
+                  <DropdownMenuLabel className="font-semibold text-[10px] uppercase tracking-wider text-muted-foreground mb-1 px-2">Account</DropdownMenuLabel>
+                  <DropdownMenuSeparator className="bg-border my-1" />
+                  <DropdownMenuItem className="cursor-pointer gap-3 rounded-lg font-medium text-foreground hover:bg-muted focus:bg-muted py-2.5 px-3 transition-colors outline-none">
+                    <User className="w-4 h-4 text-muted-foreground" />
+                    Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="cursor-pointer gap-3 rounded-lg font-medium text-foreground hover:bg-muted focus:bg-muted py-2.5 px-3 transition-colors outline-none">
+                    <Settings className="w-4 h-4 text-muted-foreground" />
+                    Preferences
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="cursor-pointer gap-3 rounded-lg font-medium text-foreground hover:bg-muted focus:bg-muted py-2.5 px-3 transition-colors outline-none">
+                    <Palette className="w-4 h-4 text-muted-foreground" />
+                    Theme
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="bg-border my-1" />
+                  <DropdownMenuItem
+                    onClick={onLogout}
+                    className="cursor-pointer gap-3 rounded-lg font-medium text-red-500 hover:text-red-600 hover:bg-red-500/10 focus:bg-red-500/10 focus:text-red-500 py-2.5 px-3 transition-colors outline-none"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Log Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              {/* Direct logout button – always visible on mobile where DropdownMenu portals can fail */}
+              <button
+                onClick={onLogout}
+                className="md:hidden relative z-50 flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:text-red-600 hover:bg-red-500/10 transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+                Log Out
+              </button>
+            </>
           )
         )}
       </div>
